@@ -1,4 +1,4 @@
-KERN_DIR = /work/system/linux-2.6.22.6 #内核地址
+﻿KERN_DIR = /work/system/linux-2.6.22.6 #内核地址
 
 all:
 	make -C $(KERN_DIR) M=`pwd` modules 
@@ -7,4 +7,4 @@ clean:
 	make -C $(KERN_DIR) M=`pwd` modules clean
 	rm -rf modules.order
 
-obj-m	+= ButtonDrv.o
+obj-m	+= buttondrv.o
