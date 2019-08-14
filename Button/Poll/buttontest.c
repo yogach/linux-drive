@@ -2,13 +2,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <poll.h>
 
 
 int main(int argc, char * argv [ ])
 {
     int fd,ret;
 
-    unsigned char key_vals;
+    unsigned char key_val;
     struct pollfd fds[1];
 
 	fd = open("/dev/buttons", O_RDWR); //打开/dev/buttons驱动
@@ -20,7 +21,7 @@ int main(int argc, char * argv [ ])
 	}
 
     fds[0].fd = fd;
-	fds[0].events = POLLIN;//POLLIN-当事件处于可以读取并不阻塞时 poll函数会返回 
+	fds[0].events = POLLIN;//POLLIN-设置事件处于可以读取并不阻塞 poll函数进行返回 
 
 	while(1)
     {
@@ -33,7 +34,7 @@ int main(int argc, char * argv [ ])
 	   }
        else
        {
-         read(fd, &key_vals, 1);
+         read(fd, &key_val, 1);
 		 printf("key_val = 0x%x\n", key_val);
 	   
 	   }

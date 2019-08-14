@@ -10,6 +10,7 @@
 #include <asm/arch/regs-gpio.h>
 #include <asm/hardware.h>
 #include <linux/interrupt.h>
+#include <linux/poll.h>
 
 
 
@@ -113,6 +114,18 @@ int Button_irq_release (struct inode *inode , struct file *file)
 	return 0;
 }
 
+unsigned int Button_poll (struct file *file, struct poll_table_struct *wait)
+{
+    unsigned int mask = 0;
+	poll_wait(file, &button_waitq, wait); // 不会立即休眠 将进程挂到某个队列中 然后可以由中断进行唤醒
+
+	if (ev_press)
+		mask |= POLLIN | POLLRDNORM;
+
+	return mask;
+}
+
+
 
 static struct file_operations Button_drv_fops =
 {
@@ -120,6 +133,7 @@ static struct file_operations Button_drv_fops =
 	.open   =   Button_open,
 	.read	=	Read_Button,
 	.release =  Button_irq_release,
+	.poll   =   Button_poll,
 };
 
 
