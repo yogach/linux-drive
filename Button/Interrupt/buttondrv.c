@@ -17,7 +17,7 @@ int major; //主设备号
 static struct class* Buttonv_class; //设备节点
 static struct class_device*	Button_class_dev;
 
-volatile unsigned long* gpfcon;
+volatile unsigned long* gpfcon; 
 volatile unsigned long* gpfdat;
 
 volatile unsigned long* gpgcon;
