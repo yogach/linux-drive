@@ -27,7 +27,7 @@ volatile unsigned long* gpgdat;
 
 static DECLARE_WAIT_QUEUE_HEAD(button_waitq);
 
-/* 中断事件标志, 中断服务程序将它置1，third_drv_read将它清0 */
+/* 中断事件标志, 中断服务程序将它置1，read函数将它清0 */
 static volatile int ev_press = 0;
 
 
@@ -50,16 +50,17 @@ static T_Pin_Desc pins_desc[4] =
 
 unsigned char key_val = 0;
 
+//中断处理函数 
 static irqreturn_t Button_handler ( int irq, void* dev_id )
 {
-	PT_Pin_Desc pin_desc = ( PT_Pin_Desc ) dev_id;
+	PT_Pin_Desc pin_desc = ( PT_Pin_Desc ) dev_id; //
 	unsigned int pinval;
 
 	pinval = s3c2410_gpio_getpin ( pin_desc->pin ); //调用2410库函数 获取io口状态
 
-	if ( pinval )
+	if ( pinval ) //
 	{
-       key_val = pin_desc->key_val | 0x80; 
+       key_val = pin_desc->key_val | 0x80;  
 	}
 	else
 	{  
@@ -92,7 +93,7 @@ static ssize_t Read_Button ( struct file* file, char __user* buf, size_t size, l
 	if (size != 1)
 		return -EINVAL;
 
-	/* 如果没有按键动作, 休眠 */
+	/* 如果没有按键动作, 休眠 如果ev_press等于1 退出休眠*/
 	wait_event_interruptible(button_waitq, ev_press);
     
 	
