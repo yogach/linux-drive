@@ -114,12 +114,14 @@ int Button_irq_release (struct inode *inode , struct file *file)
 	return 0;
 }
 
+//内核中的do_poll会定时调用指定队列中的poll函数 如果驱动程序的返回值非0 会唤醒注册的进程
 unsigned int Button_poll (struct file *file, struct poll_table_struct *wait)
 {
     unsigned int mask = 0;
-	poll_wait(file, &button_waitq, wait); // 不会立即休眠 将进程挂到某个队列中 然后可以由中断进行唤醒
+	poll_wait(file, &button_waitq, wait); // 不会立即休眠 将当前进程挂到指定队列中 
 
-	if (ev_press)
+	//如果中断中有按键按下 ev_press将会被设置为1 设置mask为非0值  
+	if (ev_press) 
 		mask |= POLLIN | POLLRDNORM;
 
 	return mask;
