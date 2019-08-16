@@ -2,6 +2,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
 
 
 static int fd;
@@ -12,14 +14,16 @@ void my_signal_fun(int signum)
 
    read(fd,&key_val,1);
    
-   printf("key_val:0x%x",key_val);
+   printf("key_val:0x%x\r\n",key_val);
 }
 
 int main(int argc, char * argv [ ])
 {
     
     unsigned char key_val;
-    struct pollfd fds[1];
+    int Oflags;
+
+	
 
 	fd = open("/dev/buttons", O_RDWR); //打开/dev/buttons驱动
 	if(fd < 0)
@@ -28,7 +32,10 @@ int main(int argc, char * argv [ ])
 
 	}
 
-    signal(SIGIO, my_signal_fun); //初始化信号处理函数 指向自定义
+
+	signal(SIGIO, my_signal_fun); //初始化信号处理函数 指向自定义
+
+    
     
     fcntl(fd, F_SETOWN, getpid()); //获取PID 告诉内核 信号应该发给谁
 	
@@ -40,8 +47,9 @@ int main(int argc, char * argv [ ])
 
 	while(1)
     {
-      sleep(5000);
+      sleep(5000); //执行休眠
 	}
 
+	return 0;
 }
 
