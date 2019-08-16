@@ -56,11 +56,11 @@ static irqreturn_t Button_handler ( int irq, void* dev_id )
 
 	pinval = s3c2410_gpio_getpin ( pin_desc->pin ); //调用2410库函数 获取io口状态
 
-	if ( pinval )
+	if ( pinval ) //
 	{
        key_val = pin_desc->key_val | 0x80; 
 	}
-	else
+	else//pinval = 0 代表按下
 	{  
 	   key_val = pin_desc->key_val ; 
 	}
