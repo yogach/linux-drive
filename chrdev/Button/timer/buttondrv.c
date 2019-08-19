@@ -83,7 +83,7 @@ static int Button_open ( struct inode* inode, struct file* file )
 	}
 	else
 	{
-		down(&button_lock); //使用阻塞方式打开本驱动            会先获取信号量 如果获取不到则进入休眠
+		down(&button_lock); //使用阻塞方式打开本驱动            会先获取信号量 如果获取不到则进入休眠 等待其他进程关闭
 	}
 
 
@@ -122,6 +122,7 @@ static ssize_t Read_Button ( struct file* file, char __user* buf, size_t size, l
 	return 1; //成功读取的字节数 非负
 }
 
+
 int Button_irq_release (struct inode *inode , struct file *file)
 {
     //释放中断
@@ -129,6 +130,7 @@ int Button_irq_release (struct inode *inode , struct file *file)
 	free_irq(IRQ_EINT2, &pins_desc[1]);
 	free_irq(IRQ_EINT11, &pins_desc[2]);
 	free_irq(IRQ_EINT19, &pins_desc[3]);
+	 
 	up(&button_lock);
 
 	return 0;
@@ -158,10 +160,10 @@ static int Button_drv_fasync (int fd, struct file *filp, int on)
 static struct file_operations Button_drv_fops =
 {
 	.owner  =   THIS_MODULE,    /* 这是一个宏，推向编译模块时自动创建的__this_module变量 */
-	.open   =   Button_open,
-	.read	=	Read_Button,
-	.release =  Button_irq_release,
-	.poll   =   Button_poll,
+	.open   =   Button_open,    //应用程序open时会调用 
+	.read	=	Read_Button,    //应用程序read时会调用
+	.release =  Button_irq_release, //应用程序close时会调用 
+	.poll   =   Button_poll,   
 	.fasync	 =  Button_drv_fasync,
 };
 
@@ -190,12 +192,12 @@ static void Button_timer_handler(unsigned long data)
 }
 
 
-//注册设备时执行
+//insmod驱动程序时执行
 static int Button_init ( void )
 {
     /*初始化定时器*/
     init_timer(&buttons_timer);
-	//设置定时器处理函数
+	//设置定时器超时函数
 	buttons_timer.function = Button_timer_handler;
 	//添加定时器
 	add_timer(&buttons_timer);
@@ -232,10 +234,7 @@ static void Button_exit ( void )
 	iounmap ( gpfcon );
 	iounmap ( gpgcon );
 
-    
-
 	//return 0;
-
 }
 
 
