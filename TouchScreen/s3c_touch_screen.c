@@ -48,41 +48,41 @@ static void enter_wait_pen_up_mode ( void )
 	s3c_ts_regs->adctsc = 0x1d3;
 }
 
-static void enter_measure_xy_mode(void)
+static void enter_measure_xy_mode ( void )
 {
-	s3c_ts_regs->adctsc =  (1<<3)|(1<<2);
+	s3c_ts_regs->adctsc =  ( 1<<3 ) | ( 1<<2 );
 
 }
 
-static void start_adc(void)
+static void start_adc ( void )
 {
-     //启动定时器
-     s3c_ts_regs->adccon |=  (1<<0);
+	//启动定时器
+	s3c_ts_regs->adccon |=  ( 1<<0 );
 
 }
 
 static irqreturn_t pen_down_up_irq ( int irq, void* dev_id )
 {
-    /*
+	/*
 	*  ADCDAT0 Bit Description Initial State
-	*	UPDOWN [15] Up or Down state of stylus at waiting for interrupt mode. 
-	*	0 = Stylus down state. 
-	*	1 = Stylus up state.    
-    */
+	*	UPDOWN [15] Up or Down state of stylus at waiting for interrupt mode.
+	*	0 = Stylus down state.
+	*	1 = Stylus up state.
+	*/
 
 	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
 	{
-       printk("pen up\r\n");
-	   enter_wait_pen_down_mode();
-	
+		printk ( "pen up\r\n" );
+		enter_wait_pen_down_mode();
+
 	}
 	else
 	{
 		//printk("pen down\r\n");
 		//enter_wait_pen_up_mode();
 		enter_measure_xy_mode();
-        start_adc();
-		
+		start_adc();
+
 	}
 
 	return IRQ_HANDLED;
@@ -90,20 +90,40 @@ static irqreturn_t pen_down_up_irq ( int irq, void* dev_id )
 
 static irqreturn_t adc_irq ( int irq, void* dev_id )
 {
-    static int cnt = 0;
-    int adcdat0, adcdat1;
+	static int cnt = 0;
+	static int x[4],y[4];
+	int adcdat0, adcdat1;
 	adcdat0 = s3c_ts_regs->adcdat0;
 	adcdat1 = s3c_ts_regs->adcdat1;
-	
+
+
+
 	/* 优化措施2: 如果ADC完成时, 发现触摸笔已经松开, 则丢弃此次结果 */
 	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
 	{
+	    /* 已经松开 */
 		enter_wait_pen_down_mode();
+		cnt = 0;
 	}
 	else
-	{		
-	    printk("adc_irq  cnt: %d x:%d y:%d \r\n",cnt++,s3c_ts_regs->adcdat0 & 0x3ff,s3c_ts_regs->adcdat1 &0x3ff);
-		enter_wait_pen_up_mode();
+	{
+		/* 优化措施3: 多次测量求平均值 */
+		x[cnt] =  adcdat0 & 0x3ff;
+		y[cnt] =  adcdat1 & 0x3ff;
+		++cnt;
+		if ( cnt == 4 )
+		{
+			printk ( "x:%d , y:%d \r\n",(x[0]+x[1]+x[2]+x[3])/4 ,(y[0]+y[1]+y[2]+y[3])/4 );
+			cnt = 0;
+			enter_wait_pen_up_mode();
+		}
+		else
+		{
+			enter_measure_xy_mode();
+			start_adc();
+		}
+
+		
 	}
 
 	return IRQ_HANDLED;
@@ -111,7 +131,7 @@ static irqreturn_t adc_irq ( int irq, void* dev_id )
 
 static int s3c_ts_init ( void )
 {
-    struct clk* clk;
+	struct clk* clk;
 
 	/* 1. 分配一个input_dev结构体 */
 	s3c_ts_dev = input_allocate_device();
@@ -149,12 +169,12 @@ static int s3c_ts_init ( void )
 	s3c_ts_regs->adccon = ( 1<<14 ) | ( 49<<6 );
 
 	request_irq ( IRQ_TC, pen_down_up_irq, IRQF_SAMPLE_RANDOM, "ts_pen", NULL );//申请触摸屏中断
- 	request_irq(IRQ_ADC, adc_irq, IRQF_SAMPLE_RANDOM, "adc", NULL);//申请ADC中断
+	request_irq ( IRQ_ADC, adc_irq, IRQF_SAMPLE_RANDOM, "adc", NULL ); //申请ADC中断
 
-    /* 优化措施施1: 
+	/* 优化措施施1:
 	 * 设置ADCDLY为最大值, 这使得电压稳定后再发出IRQ_TC中断(让电压处于稳定后再读取)
 	 */
-    s3c_ts_regs->adcdly = 0xffff;
+	s3c_ts_regs->adcdly = 0xffff;
 
 
 	enter_wait_pen_down_mode();
@@ -168,6 +188,7 @@ static int s3c_ts_init ( void )
 static void s3c_ts_exit ( void )
 {
 	free_irq ( IRQ_TC,NULL );
+	free_irq ( IRQ_ADC,NULL );
 	iounmap ( s3c_ts_regs );
 
 	input_unregister_device ( s3c_ts_dev );
