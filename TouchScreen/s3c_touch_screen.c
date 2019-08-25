@@ -88,6 +88,40 @@ static irqreturn_t pen_down_up_irq ( int irq, void* dev_id )
 	return IRQ_HANDLED;
 }
 
+static int s3c_filter_ts ( int x[], int y[] ) \
+{
+#define ERR_LIMIT 10
+
+	int avr_x, avr_y;
+	int det_x, det_y;
+
+	avr_x = ( x[0] +x[1] ) /2;
+	avr_y = ( y[0] +y[1] ) /2;
+
+	det_x = ( x[2] > avr_x ) ? ( x[2] - avr_x ) : ( avr_x - x[2] );
+	det_y = ( y[2] > avr_y ) ? ( y[2] - avr_y ) : ( avr_y - y[2] );
+
+	if ( (det_x > ERR_LIMIT) || (det_y > ERR_LIMIT))
+	{
+		return 0;
+	}
+	avr_x = ( x[1] +x[2] ) /2;
+	avr_y = ( y[1] +y[2] ) /2;
+
+	det_x = ( x[3] > avr_x ) ? ( x[3] - avr_x ) : ( avr_x - x[3] );
+	det_y = ( y[3] > avr_y ) ? ( y[3] - avr_y ) : ( avr_y - y[3] );
+
+	if ( (det_x > ERR_LIMIT) || (det_y > ERR_LIMIT))
+	{
+		return 0;
+	}
+	return 1;
+
+
+}
+
+
+
 static irqreturn_t adc_irq ( int irq, void* dev_id )
 {
 	static int cnt = 0;
@@ -101,7 +135,7 @@ static irqreturn_t adc_irq ( int irq, void* dev_id )
 	/* 优化措施2: 如果ADC完成时, 发现触摸笔已经松开, 则丢弃此次结果 */
 	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
 	{
-	    /* 已经松开 */
+		/* 已经松开 */
 		enter_wait_pen_down_mode();
 		cnt = 0;
 	}
@@ -113,7 +147,11 @@ static irqreturn_t adc_irq ( int irq, void* dev_id )
 		++cnt;
 		if ( cnt == 4 )
 		{
-			printk ( "x:%d , y:%d \r\n",(x[0]+x[1]+x[2]+x[3])/4 ,(y[0]+y[1]+y[2]+y[3])/4 );
+			/* 优化措施4: 软件过滤 */
+			if ( s3c_filter_ts ( x, y ) )
+			{
+				printk ( "x:%d , y:%d \r\n", ( x[0]+x[1]+x[2]+x[3] ) /4, ( y[0]+y[1]+y[2]+y[3] ) /4 );
+			}
 			cnt = 0;
 			enter_wait_pen_up_mode();
 		}
@@ -123,7 +161,7 @@ static irqreturn_t adc_irq ( int irq, void* dev_id )
 			start_adc();
 		}
 
-		
+
 	}
 
 	return IRQ_HANDLED;
