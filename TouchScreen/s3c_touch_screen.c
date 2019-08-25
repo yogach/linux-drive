@@ -34,6 +34,7 @@ struct s3c_ts_regs
 
 static struct input_dev* s3c_ts_dev;
 static volatile struct s3c_ts_regs* s3c_ts_regs;
+static struct timer_list s3c_ts_timer;
 
 static void enter_wait_pen_down_mode ( void )
 {
@@ -72,7 +73,7 @@ static irqreturn_t pen_down_up_irq ( int irq, void* dev_id )
 
 	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
 	{
-		printk ( "pen up\r\n" );
+		//printk ( "pen up\r\n" );
 		enter_wait_pen_down_mode();
 
 	}
@@ -101,7 +102,7 @@ static int s3c_filter_ts ( int x[], int y[] ) \
 	det_x = ( x[2] > avr_x ) ? ( x[2] - avr_x ) : ( avr_x - x[2] );
 	det_y = ( y[2] > avr_y ) ? ( y[2] - avr_y ) : ( avr_y - y[2] );
 
-	if ( (det_x > ERR_LIMIT) || (det_y > ERR_LIMIT))
+	if ( ( det_x > ERR_LIMIT ) || ( det_y > ERR_LIMIT ) )
 	{
 		return 0;
 	}
@@ -111,7 +112,7 @@ static int s3c_filter_ts ( int x[], int y[] ) \
 	det_x = ( x[3] > avr_x ) ? ( x[3] - avr_x ) : ( avr_x - x[3] );
 	det_y = ( y[3] > avr_y ) ? ( y[3] - avr_y ) : ( avr_y - y[3] );
 
-	if ( (det_x > ERR_LIMIT) || (det_y > ERR_LIMIT))
+	if ( ( det_x > ERR_LIMIT ) || ( det_y > ERR_LIMIT ) )
 	{
 		return 0;
 	}
@@ -147,13 +148,20 @@ static irqreturn_t adc_irq ( int irq, void* dev_id )
 		++cnt;
 		if ( cnt == 4 )
 		{
-			/* 优化措施4: 软件过滤 */
+			/* 优化措施4: 软件过滤 对两次测量的平均与之后一个值进行比较*/
 			if ( s3c_filter_ts ( x, y ) )
 			{
 				printk ( "x:%d , y:%d \r\n", ( x[0]+x[1]+x[2]+x[3] ) /4, ( y[0]+y[1]+y[2]+y[3] ) /4 );
 			}
+
+
 			cnt = 0;
 			enter_wait_pen_up_mode();
+
+
+			/* 启动定时器处理长按/滑动的情况 10ms后执行定时器处理函数*/
+			mod_timer ( &s3c_ts_timer, jiffies + HZ/100 );
+
 		}
 		else
 		{
@@ -166,6 +174,27 @@ static irqreturn_t adc_irq ( int irq, void* dev_id )
 
 	return IRQ_HANDLED;
 }
+
+static void s3c_ts_timer_function ( unsigned long data )
+{
+	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
+	{
+		/*如果已经松开 重新进入等待触摸屏按下模式*/
+		enter_wait_pen_down_mode();
+
+
+	}
+	else
+	{
+		/*如果没有松开继续测量X/Y坐标 */
+		enter_measure_xy_mode();
+		start_adc();
+
+	}
+
+
+}
+
 
 static int s3c_ts_init ( void )
 {
@@ -214,6 +243,12 @@ static int s3c_ts_init ( void )
 	 */
 	s3c_ts_regs->adcdly = 0xffff;
 
+	/* 优化措施5: 使用定时器处理长按,滑动的情况
+	 *
+	 */
+	init_timer ( &s3c_ts_timer );
+	s3c_ts_timer.function = s3c_ts_timer_function;
+	add_timer ( &s3c_ts_timer );
 
 	enter_wait_pen_down_mode();
 
@@ -231,6 +266,7 @@ static void s3c_ts_exit ( void )
 
 	input_unregister_device ( s3c_ts_dev );
 	input_free_device ( s3c_ts_dev );
+	del_timer ( &s3c_ts_timer );
 
 
 }
