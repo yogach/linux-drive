@@ -74,6 +74,9 @@ static irqreturn_t pen_down_up_irq ( int irq, void* dev_id )
 	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
 	{
 		//printk ( "pen up\r\n" );
+		input_report_abs ( s3c_ts_dev, ABS_PRESSURE, 0 );//上报触摸屏已按下 0代表松开
+		input_report_key ( s3c_ts_dev, BTN_TOUCH, 0 );//上报事件
+		input_sync ( s3c_ts_dev );
 		enter_wait_pen_down_mode();
 
 	}
@@ -151,14 +154,17 @@ static irqreturn_t adc_irq ( int irq, void* dev_id )
 			/* 优化措施4: 软件过滤 对两次测量的平均与之后一个值进行比较*/
 			if ( s3c_filter_ts ( x, y ) )
 			{
-				printk ( "x:%d , y:%d \r\n", ( x[0]+x[1]+x[2]+x[3] ) /4, ( y[0]+y[1]+y[2]+y[3] ) /4 );
-			}
+				//printk ( "x:%d , y:%d \r\n", ( x[0]+x[1]+x[2]+x[3] ) /4, ( y[0]+y[1]+y[2]+y[3] ) /4 );
 
+				input_report_abs ( s3c_ts_dev, ABS_X, ( x[0]+x[1]+x[2]+x[3] ) /4 );//上报触摸屏x坐标
+				input_report_abs ( s3c_ts_dev, ABS_Y, ( y[0]+y[1]+y[2]+y[3] ) /4 );//上报触摸屏y坐标
+				input_report_abs ( s3c_ts_dev, ABS_PRESSURE, 1 );////上报触摸屏已按下 1代表按下
+				input_report_key ( s3c_ts_dev, BTN_TOUCH, 1 );//上报事件
+				input_sync ( s3c_ts_dev );
+			}
 
 			cnt = 0;
 			enter_wait_pen_up_mode();
-
-
 			/* 启动定时器处理长按/滑动的情况 10ms后执行定时器处理函数*/
 			mod_timer ( &s3c_ts_timer, jiffies + HZ/100 );
 
@@ -180,6 +186,9 @@ static void s3c_ts_timer_function ( unsigned long data )
 	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
 	{
 		/*如果已经松开 重新进入等待触摸屏按下模式*/
+		input_report_abs ( s3c_ts_dev, ABS_PRESSURE, 0 );//上报触摸屏已按下 0代表松开
+		input_report_key ( s3c_ts_dev, BTN_TOUCH, 0 );//上报事件
+		input_sync ( s3c_ts_dev );
 		enter_wait_pen_down_mode();
 
 
