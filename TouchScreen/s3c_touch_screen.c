@@ -91,8 +91,21 @@ static irqreturn_t pen_down_up_irq ( int irq, void* dev_id )
 static irqreturn_t adc_irq ( int irq, void* dev_id )
 {
     static int cnt = 0;
-    printk("adc_irq  cnt: %d x:%d y:%d \r\n",cnt++,s3c_ts_regs->adcdat0 & 0x3ff,s3c_ts_regs->adcdat1 &0x3ff);
-	enter_wait_pen_up_mode();
+    int adcdat0, adcdat1;
+	adcdat0 = s3c_ts_regs->adcdat0;
+	adcdat1 = s3c_ts_regs->adcdat1;
+	
+	/* 优化措施2: 如果ADC完成时, 发现触摸笔已经松开, 则丢弃此次结果 */
+	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
+	{
+		enter_wait_pen_down_mode();
+	}
+	else
+	{		
+	    printk("adc_irq  cnt: %d x:%d y:%d \r\n",cnt++,s3c_ts_regs->adcdat0 & 0x3ff,s3c_ts_regs->adcdat1 &0x3ff);
+		enter_wait_pen_up_mode();
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -137,6 +150,12 @@ static int s3c_ts_init ( void )
 
 	request_irq ( IRQ_TC, pen_down_up_irq, IRQF_SAMPLE_RANDOM, "ts_pen", NULL );//申请触摸屏中断
  	request_irq(IRQ_ADC, adc_irq, IRQF_SAMPLE_RANDOM, "adc", NULL);//申请ADC中断
+
+    /* 优化措施施1: 
+	 * 设置ADCDLY为最大值, 这使得电压稳定后再发出IRQ_TC中断(让电压处于稳定后再读取)
+	 */
+    s3c_ts_regs->adcdly = 0xffff;
+
 
 	enter_wait_pen_down_mode();
 
