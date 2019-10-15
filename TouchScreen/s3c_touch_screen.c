@@ -71,10 +71,10 @@ static irqreturn_t pen_down_up_irq ( int irq, void* dev_id )
 	*	1 = Stylus up state.
 	*/
 
-	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
+	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) ) //判断此时是否有按下 如果没有
 	{
 		//printk ( "pen up\r\n" );
-		input_report_abs ( s3c_ts_dev, ABS_PRESSURE, 0 );//上报触摸屏已按下 0代表松开
+		input_report_abs ( s3c_ts_dev, ABS_PRESSURE, 0 );//上报触摸屏已松开 0代表松开
 		input_report_key ( s3c_ts_dev, BTN_TOUCH, 0 );//上报事件
 		input_sync ( s3c_ts_dev );
 		enter_wait_pen_down_mode();
@@ -137,7 +137,7 @@ static irqreturn_t adc_irq ( int irq, void* dev_id )
 
 
 	/* 优化措施2: 如果ADC完成时, 发现触摸笔已经松开, 则丢弃此次结果 */
-	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
+	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) ) //判断此时是否有按下 如果没有
 	{
 		/* 已经松开 */
 		enter_wait_pen_down_mode();
@@ -183,10 +183,10 @@ static irqreturn_t adc_irq ( int irq, void* dev_id )
 
 static void s3c_ts_timer_function ( unsigned long data )
 {
-	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )
+	if ( s3c_ts_regs->adcdat0 & ( 1<<15 ) )//判断此时是否有按下 如果没有
 	{
 		/*如果已经松开 重新进入等待触摸屏按下模式*/
-		input_report_abs ( s3c_ts_dev, ABS_PRESSURE, 0 );//上报触摸屏已按下 0代表松开
+		input_report_abs ( s3c_ts_dev, ABS_PRESSURE, 0 );//上报触摸屏已松开 0代表松开
 		input_report_key ( s3c_ts_dev, BTN_TOUCH, 0 );//上报事件
 		input_sync ( s3c_ts_dev );
 		enter_wait_pen_down_mode();
