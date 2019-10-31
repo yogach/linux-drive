@@ -20,6 +20,33 @@
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf-core.h>
 
+// CAMIF GPIO
+static unsigned long *GPJCON;
+static unsigned long *GPJDAT;
+static unsigned long *GPJUP;
+
+// CAMIF
+static unsigned long *CISRCFMT;
+static unsigned long *CIWDOFST;
+static unsigned long *CIGCTRL;
+static unsigned long *CIPRCLRSA1;
+static unsigned long *CIPRCLRSA2;
+static unsigned long *CIPRCLRSA3;
+static unsigned long *CIPRCLRSA4;
+static unsigned long *CIPRTRGFMT;
+static unsigned long *CIPRCTRL;
+static unsigned long *CIPRSCPRERATIO;
+static unsigned long *CIPRSCPREDST;
+static unsigned long *CIPRSCCTRL;
+static unsigned long *CIPRTAREA;
+static unsigned long *CIIMGCPT;
+
+// IRQ
+static unsigned long *SRCPND;
+static unsigned long *INTPND;
+static unsigned long *SUBSRCPND;
+
+
 
 /* 参考 uvc_v4l2_do_ioctl */
 static int cmos_ov7740_vidioc_querycap(struct file *file, void  *priv,
@@ -156,12 +183,74 @@ static struct video_device cmos_ov7740_vdev = {
 	.name		= "cmos_ov7740",
 };
 
+static void cmos_ov7740_gpio_cfg(void)
+{
+
+   /* 设置相应的GPIO用于CAMIF */
+   *GPJCON = 0x2aaaaaa;
+   *GPJDAT = 0;
+
+   
+   /* 使能上拉电阻 */
+   *GPJUP = 0;
+}
+
+static void cmos_ov7740_camif_reset(void)
+{
+   /* 传输方式为BT601 */
+   *CISRCFMT |= (1<<31);
+
+   
+   /* 复位CAMIF控制器 */
+   *CIGCTRL  |= (1<<31);
+   mdelay(10);
+   *CIGCTRL  &=~ (1<<31);
+   mdelay(10);
+
+}
+
 //当drv name 与dev name相同时会执行probe函数
 //需要在probe函数中注册video设备
 static int __devinit cmos_ov7740_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
     
 	printk("%s %s %d\n", __FILE__, __FUNCTION__, __LINE__);
+	/* 2.3 硬件相关 */
+	/* 2.3.1 映射相应的寄存器 */    
+	GPJCON = ioremap(0x560000d0, 4);
+	GPJDAT = ioremap(0x560000d4, 4);
+	GPJUP = ioremap(0x560000d8, 4);
+    
+	CISRCFMT = ioremap(0x4F000000, 4);
+	CIWDOFST = ioremap(0x4F000004, 4);
+	CIGCTRL = ioremap(0x4F000008, 4);
+	CIPRCLRSA1 = ioremap(0x4F00006C, 4);
+	CIPRCLRSA2 = ioremap(0x4F000070, 4);
+	CIPRCLRSA3 = ioremap(0x4F000074, 4);
+	CIPRCLRSA4 = ioremap(0x4F000078, 4);
+	CIPRTRGFMT = ioremap(0x4F00007C, 4);
+	CIPRCTRL = ioremap(0x4F000080, 4);
+	CIPRSCPRERATIO = ioremap(0x4F000084, 4);
+	CIPRSCPREDST = ioremap(0x4F000088, 4);
+	CIPRSCCTRL = ioremap(0x4F00008C, 4);
+	CIPRTAREA = ioremap(0x4F000090, 4);
+	CIIMGCPT = ioremap(0x4F0000A0, 4);
+
+	SRCPND = ioremap(0X4A000000, 4);
+	INTPND = ioremap(0X4A000010, 4);
+	SUBSRCPND = ioremap(0X4A000018, 4);
+	
+	/* 2.3.2 设置相应的GPIO用于CAMIF */
+	cmos_ov7740_gpio_cfg();
+	/* 2.3.3 复位一下CAMIF控制器 */
+    cmos_ov7740_camif_reset();
+	
+	/* 2.3.4 设置、使能时钟(使能HCLK、使能并设置CAMCLK = 24MHz) */
+	/* 2.3.5 复位一下摄像头模块 */
+	
+	/* 2.3.6 通过IIC总线,初始化摄像头模块 */
+	
+	/* 2.3.7 注册中断 */
 
 	/* 2.2.注册设备 */
     video_register_device(&cmos_ov7740_vdev, VFL_TYPE_GRABBER, -1);
