@@ -1,4 +1,4 @@
-KERN_DIR = /work/jz2440/linux-3.4.2   #linux内核目录
+KERN_DIR = /work/projects/linux-3.4.2   #linux内核目录
 
 all:
 	make -C $(KERN_DIR) M=`pwd` modules 

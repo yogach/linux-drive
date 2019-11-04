@@ -468,7 +468,7 @@ static int cmos_ov7740_vidioc_reqbufs ( struct file* file, void* priv, struct v4
 	img_buff[0].virt_address =  __get_free_pages ( GFP_KERNEL|__GFP_DMA,order );
 	if ( !img_buff[0].virt_address )
 	{
-		printk ( "[%s]:%s __get_free_pages error ",__func__,__LINE__ );
+		printk ( "[%s]:%d __get_free_pages error ",__FILE__,__LINE__ );
 		goto error0;
 	}
 	img_buff[0].phy_address = __virt_to_phys ( img_buff[0].virt_address );
@@ -480,7 +480,7 @@ static int cmos_ov7740_vidioc_reqbufs ( struct file* file, void* priv, struct v4
 	img_buff[1].virt_address =  __get_free_pages ( GFP_KERNEL|__GFP_DMA,order );
 	if ( !img_buff[1].virt_address )
 	{
-		printk ( "[%s]:%s __get_free_pages error ",__func__,__LINE__ );
+		printk ( "[%s]:%d __get_free_pages error ",__FILE__,__LINE__ );
 		goto error1;
 	}
 	img_buff[1].phy_address = __virt_to_phys ( img_buff[1].virt_address );
@@ -492,7 +492,7 @@ static int cmos_ov7740_vidioc_reqbufs ( struct file* file, void* priv, struct v4
 	img_buff[2].virt_address =  __get_free_pages ( GFP_KERNEL|__GFP_DMA,order );
 	if ( !img_buff[2].virt_address )
 	{
-		printk ( "[%s]:%s __get_free_pages error ",__func__,__LINE__ );
+		printk ( "[%s]:%d __get_free_pages error ",__FILE__,__LINE__ );
 		goto error2;
 	}
 	img_buff[2].phy_address = __virt_to_phys ( img_buff[2].virt_address );
@@ -504,15 +504,15 @@ static int cmos_ov7740_vidioc_reqbufs ( struct file* file, void* priv, struct v4
 	img_buff[3].virt_address =  __get_free_pages ( GFP_KERNEL|__GFP_DMA,order );
 	if ( !img_buff[3].virt_address )
 	{
-		printk ( "[%s]:%s __get_free_pages error ",__func__,__LINE__ );
+		printk ( "[%s]:%d __get_free_pages error ",__FILE__,__LINE__ );
 		goto error3;
 	}
 	img_buff[3].phy_address = __virt_to_phys ( img_buff[3].virt_address );
 	/************************************************/
-	*CIPRCLRSA1 = img_buff[0].phy_base;
-	*CIPRCLRSA2 = img_buff[1].phy_base;
-	*CIPRCLRSA3 = img_buff[2].phy_base;
-	*CIPRCLRSA4 = img_buff[3].phy_base;
+	*CIPRCLRSA1 = img_buff[0].phy_address;
+	*CIPRCLRSA2 = img_buff[1].phy_address;
+	*CIPRCLRSA3 = img_buff[2].phy_address;
+	*CIPRCLRSA4 = img_buff[3].phy_address;
 	return 0;
 
 
@@ -1041,18 +1041,18 @@ static int __devinit cmos_ov7740_probe ( struct i2c_client* client, const struct
 	/* 2.3.7 注册中断 */
 	if ( request_irq ( IRQ_S3C2440_CAM_C, cmos_ov7740_camif_irq_c, IRQF_DISABLED, "CAM_C", NULL ) )
 	{
-		printk ( "[%s]:%s request irq fail ",__func__,__LINE__ );
+		printk ( "[%s]:%d request irq fail ",__func__,__LINE__ );
 	}
 
 	if ( request_irq ( IRQ_S3C2440_CAM_P, cmos_ov7740_camif_irq_p, IRQF_DISABLED, "CAM_P", NULL ) )
 	{
-		printk ( "[%s]:%s request irq fail ",__func__,__LINE__ );
+		printk ( "[%s]:%d request irq fail ",__func__,__LINE__ );
 	}
 
 	/* 2.2.注册设备 */
 	if ( video_register_device ( &cmos_ov7740_vdev, VFL_TYPE_GRABBER, -1 ) ) //VFL_TYPE_GRABBER图像采集设备
 	{
-		printk ( "[%s]:%s register device fail ",__func__,__LINE__ );
+		printk ( "[%s]:%d register device fail ",__func__,__LINE__ );
 	}
 
 	return 0;
