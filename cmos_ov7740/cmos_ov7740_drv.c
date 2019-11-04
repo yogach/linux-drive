@@ -20,6 +20,9 @@
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf-core.h>
 
+#include <linux/clk.h>
+#include <asm/io.h>
+
 // CAMIF GPIO
 static unsigned long* GPJCON;
 static unsigned long* GPJDAT;
@@ -120,7 +123,7 @@ static unsigned long* SUBSRCPND;
 static struct i2c_client* cmos_ov7740_client;
 
 
-static unsigned int SRC_Width, SRC_Height;//源数据分辨率 
+static unsigned int SRC_Width, SRC_Height;//源数据分辨率
 static unsigned int TargetXres, TargetYres;//目标图片分辨率
 
 
@@ -128,6 +131,10 @@ static unsigned long buf_size;//一帧数据总大小
 static unsigned int  bytesperline; //一行所占的字节数
 static unsigned int Main_burst, Remained_burst; // 主突发长度  次突发长度
 
+//休眠队列头
+static DECLARE_WAIT_QUEUE_HEAD ( cam_wait_queue );
+/* 中断标志 */
+static volatile int ev_cam = 0;
 
 typedef struct cmos_ov7740_i2c_value
 {
@@ -208,6 +215,30 @@ ov7740_t ov7740_setting_30fps_VGA_640_480[] =
 	{0x84, 0x70}
 };
 
+struct cmos_ov7740_fmt
+{
+	char*  name;
+	u32   fourcc;          /* v4l2 format id */
+	int   depth;
+};
+
+//列举此驱动支持的像素格式
+static struct cmos_ov7740_fmt formats[] =
+{
+	{
+		.name     = "RGB565",
+		.fourcc   = V4L2_PIX_FMT_RGB565,
+		.depth    = 16,
+	},
+	{
+		.name     = "PACKED_RGB_888",
+		.fourcc   = V4L2_PIX_FMT_RGB24,
+		.depth    = 24,
+	},
+};
+
+
+
 struct camif_buffer
 {
 
@@ -248,7 +279,8 @@ struct camif_buffer img_buff[] =
 
 };
 
-struct cmos_ov7740_scaler {
+struct cmos_ov7740_scaler
+{
 	unsigned int PreHorRatio;//水平变比
 	unsigned int PreVerRatio;//垂直变比
 	unsigned int H_Shift;//水平比
@@ -277,18 +309,64 @@ struct cmos_ov7740_scaler sc;
 
 
 
+static irqreturn_t cmos_ov7740_camif_irq_c ( int irq, void* dev_id )
+{
 
-/* 参考 uvc_v4l2_do_ioctl */
+	return IRQ_HANDLED;
+
+}
+
+//预览通道中断函数
+static irqreturn_t cmos_ov7740_camif_irq_p ( int irq, void* dev_id )
+{
+	/* 清中断 */
+	*SRCPND = 1<<6;
+	*INTPND = 1<<6;
+	*SUBSRCPND = 1<<12;
+
+	ev_cam = 1;
+
+	wake_up_interruptible ( &cam_wait_queue );
+
+	return IRQ_HANDLED;
+
+}
+
+
+/*
+  查询设备类型和读取的IO方式
+  参考 uvc_v4l2_do_ioctl
+*/
 static int cmos_ov7740_vidioc_querycap ( struct file* file, void*  priv, struct v4l2_capability* cap )
 {
+	memset ( cap,0,sizeof ( struct v4l2_capability ) );
+	strcpy ( cap->driver,"cmos_ov7740" );
+	strcpy ( cap->card,"cmos_ov7740" );
+	cap->version = 2;
+
+	cap->capabilities = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_READWRITE;
+
 	return 0;
 }
 
-/* 列举支持哪种格式
+/* 列举支持哪些数据格式
  * 参考: uvc_fmts 数组
  */
 static int cmos_ov7740_vidioc_enum_fmt_vid_cap ( struct file* file, void*  priv,struct v4l2_fmtdesc* f )
 {
+	struct cmos_ov7740_fmt* fmt;
+
+	if ( f->index >= ARRAY_SIZE ( formats ) )
+	{
+		return -EINVAL;
+	}
+
+	fmt = &formats[f->index];
+
+	strlcpy ( f->description,fmt->name,sizeof ( f->description ) );
+	f->pixelformat = fmt->fourcc;
+
+
 	return 0;
 }
 
@@ -341,14 +419,14 @@ static int cmos_ov7740_vidioc_s_fmt_vid_cap ( struct file* file, void* priv,stru
 	//如果设置输出的像素格式是RGB565
 	if ( f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565 )
 	{
-	    
+
 		*CIPRSCCTRL |= ( 0<<30 );
 		//计算一行所占的字节数 整个空间所占的字节数 bpp设置为16
-		f->fmt.pix.bytesperline = (f->fmt.pix.width * 16) >> 3;
+		f->fmt.pix.bytesperline = ( f->fmt.pix.width * 16 ) >> 3;
 		f->fmt.pix.sizeimage = f->fmt.pix.height * f->fmt.pix.bytesperline;
 
-        //记录一行所占字节与总大小
-        bytesperline = f->fmt.pix.bytesperline;
+		//记录一行所占字节与总大小
+		bytesperline = f->fmt.pix.bytesperline;
 		buf_size = f->fmt.pix.sizeimage;
 	}
 	else if ( f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24 )
@@ -356,11 +434,11 @@ static int cmos_ov7740_vidioc_s_fmt_vid_cap ( struct file* file, void* priv,stru
 
 		*CIPRSCCTRL |= ( 1<<30 );
 		//计算一行所占的字节数 整个空间所占的字节数 bpp设置为32
-		f->fmt.pix.bytesperline = (f->fmt.pix.width * 32) >> 3;
+		f->fmt.pix.bytesperline = ( f->fmt.pix.width * 32 ) >> 3;
 		f->fmt.pix.sizeimage = f->fmt.pix.height * f->fmt.pix.bytesperline;
 
-        //记录一行所占字节与总大小
-        bytesperline = f->fmt.pix.bytesperline;
+		//记录一行所占字节与总大小
+		bytesperline = f->fmt.pix.bytesperline;
 		buf_size = f->fmt.pix.sizeimage;
 
 	}
@@ -371,7 +449,7 @@ static int cmos_ov7740_vidioc_s_fmt_vid_cap ( struct file* file, void* priv,stru
 		bit[15:14] -- 是否旋转，我们这个驱动就不选择了(0)
 		bit[12:0]	 -- 表示目标图片的垂直像素大小(TargetYres)
 	*/
-    *CIPRTRGFMT = (TargetXres<<16)|(0<<14)|(TargetYres<<0);
+	*CIPRTRGFMT = ( TargetXres<<16 ) | ( 0<<14 ) | ( TargetYres<<0 );
 	return 0;
 }
 
@@ -385,17 +463,19 @@ static int cmos_ov7740_vidioc_reqbufs ( struct file* file, void* priv, struct v4
 	/************************************************/
 
 	img_buff[0].order = order;
+
 	//申请空间 用于DMA的内存，可以睡眠 GFP_DMA | GFP_KERNEL
 	img_buff[0].virt_address =  __get_free_pages ( GFP_KERNEL|__GFP_DMA,order );
 	if ( !img_buff[0].virt_address )
 	{
 		printk ( "[%s]:%s __get_free_pages error ",__func__,__LINE__ );
-		goto error;
+		goto error0;
 	}
 	img_buff[0].phy_address = __virt_to_phys ( img_buff[0].virt_address );
 
 	/************************************************/
 	img_buff[1].order = order;
+
 	//申请空间 用于DMA的内存，可以睡眠 GFP_DMA | GFP_KERNEL
 	img_buff[1].virt_address =  __get_free_pages ( GFP_KERNEL|__GFP_DMA,order );
 	if ( !img_buff[1].virt_address )
@@ -407,6 +487,7 @@ static int cmos_ov7740_vidioc_reqbufs ( struct file* file, void* priv, struct v4
 
 	/************************************************/
 	img_buff[2].order = order;
+
 	//申请空间 用于DMA的内存，可以睡眠 GFP_DMA | GFP_KERNEL
 	img_buff[2].virt_address =  __get_free_pages ( GFP_KERNEL|__GFP_DMA,order );
 	if ( !img_buff[2].virt_address )
@@ -418,6 +499,7 @@ static int cmos_ov7740_vidioc_reqbufs ( struct file* file, void* priv, struct v4
 
 	/************************************************/
 	img_buff[3].order = order;
+
 	//申请空间 用于DMA的内存，可以睡眠 GFP_DMA | GFP_KERNEL
 	img_buff[3].virt_address =  __get_free_pages ( GFP_KERNEL|__GFP_DMA,order );
 	if ( !img_buff[3].virt_address )
@@ -427,6 +509,10 @@ static int cmos_ov7740_vidioc_reqbufs ( struct file* file, void* priv, struct v4
 	}
 	img_buff[3].phy_address = __virt_to_phys ( img_buff[3].virt_address );
 	/************************************************/
+	*CIPRCLRSA1 = img_buff[0].phy_base;
+	*CIPRCLRSA2 = img_buff[1].phy_base;
+	*CIPRCLRSA3 = img_buff[2].phy_base;
+	*CIPRCLRSA4 = img_buff[3].phy_base;
 	return 0;
 
 
@@ -442,7 +528,7 @@ error1:
 	free_pages ( img_buff[0].virt_address,order );
 	img_buff[0].phy_address = ( unsigned long ) NULL;
 
-error:
+error0:
 	return -ENOMEM;
 
 }
@@ -515,22 +601,76 @@ static void CalculateBurstSize ( unsigned int hSize, unsigned int* mainBusrtSize
 
 /* 照抄jz2440用户手册的527页代码 */
 
-staic void camif_get_scaler_factor(unsigned int src,unsigned int dst,unsigned int *ratio,unsigned int *shift)
+static void camif_get_scaler_factor ( unsigned int src,unsigned int dst,unsigned int* ratio,unsigned int* shift )
 {
-
+	if ( src >= 64*dst )
+	{
+		return ;
+	}
+	else if ( src >= 32*dst )
+	{
+		*ratio = 32;
+		*shift = 5;
+	}
+	else if ( src >= 16*dst )
+	{
+		*ratio = 16;
+		*shift = 4;
+	}
+	else if ( src >= 8*dst )
+	{
+		*ratio = 8;
+		*shift = 3;
+	}
+	else if ( src >= 4*dst )
+	{
+		*ratio = 4;
+		*shift = 2;
+	}
+	else if ( src >= 2*dst )
+	{
+		*ratio = 2;
+		*shift = 1;
+	}
+	else
+	{
+		*ratio = 1;
+		*shift = 0;
+	}
 
 }
 
 
-static void cmos_ov7740_calculate_scaler_info(void)
+static void cmos_ov7740_calculate_scaler_info ( void )
 {
 
-/* 这里的源宽度和源高度是经过窗口剪切的图像数据 
+	/* 这里的源宽度和源高度是经过窗口剪切的图像数据
 	 * 这里的目标宽度和高度是应用程序在cmos_ov7740_vidioc_s_fmt_vid_cap函数
 	 * 设置数据格式时传入的，表示应用程序想要获得的图像分辨率
 	 */
+	//源数据高度 宽度 目标数据高度 宽度
+	unsigned int src_h,src_w,tar_h,tar_w;
 
+	src_h = SRC_Height;
+	src_w = SRC_Width;
+	tar_h = TargetYres;
+	tar_w = TargetXres;
 
+	printk ( "%s: SRC_in(%d, %d), Target_out(%d, %d)\n", __func__, src_w, src_h, tar_w, tar_h );
+
+	//根据源数据与目标数据计算 水平垂直方向的变比与 水平比
+	camif_get_scaler_factor ( src_h,tar_h,&sc.PreVerRatio,&sc.V_Shift );
+	camif_get_scaler_factor ( src_w,tar_w,&sc.PreHorRatio,&sc.H_Shift );
+
+	sc.PreDstWidth = src_w / sc.PreHorRatio;
+	sc.PreDstHeight = src_h / sc.PreVerRatio;
+
+	sc.MainHorRatio = ( src_w << 8 ) / ( tar_w << sc.H_Shift );
+	sc.MainVerRatio = ( src_h << 8 ) / ( tar_h << sc.V_Shift );
+
+	sc.SHfactor = 10 - ( sc.H_Shift + sc.V_Shift );
+
+	sc.ScaleUpDown = ( tar_w>=src_w ) ?1:0;
 }
 
 
@@ -588,7 +728,7 @@ static int cmos_ov7740_vidioc_streamon ( struct file* file, void* priv, enum v4l
 		继续上述例子，48字节按每10字节发送完毕后，最后一个8字节就是剩余突发长度。
 	*/
 	CalculateBurstSize ( bytesperline, &Main_burst, &Remained_burst );
-	*CIPRCTRL |= ( Main_burst<<19 ) | ( Remained_burst<<14 ) | ( 0<<2 );
+	*CIPRCTRL = ( Main_burst<<19 ) | ( Remained_burst<<14 ) | ( 0<<2 );
 
 	/*
 	CIPRSCPRERATIO:
@@ -609,26 +749,24 @@ static int cmos_ov7740_vidioc_streamon ( struct file* file, void* priv, enum v4l
 		bit[30]: 设置图像输出格式是RGB16、RGB24
 		bit[15]: 预览缩放开始
 	*/
+	cmos_ov7740_calculate_scaler_info();
+	*CIPRSCPRERATIO = ( sc.SHfactor << 28 ) | ( sc.PreHorRatio<<16 ) | ( sc.PreVerRatio<<0 );
+	*CIPRSCPREDST = ( sc.PreDstWidth<<16 ) | ( sc.PreDstHeight<<0 );
+	*CIPRSCCTRL |= ( 1<<31 ) | ( sc.ScaleUpDown<<28 ) | ( sc.MainHorRatio<<16 ) | ( sc.MainVerRatio<<0 );
 
-    *CIPRSCPRERATIO = ;
-    *CIPRSCPREDST = ;
-	*CIPRSCCTRL = ;
-
-   
 	/*
 	CIPRTAREA:
-		表示预览通道的目标区域大小 用于DMA
+		表示预览通道的目标区域大小 此区域用于DMA功能 值为目标宽度*目标高度
 	*/
-    *CIPRTAREA =;
+	*CIPRTAREA =TargetXres * TargetYres;
 
 	/*
 	CIIMGCPT:
 		bit[31]: 用来使能摄像头控制器
 		bit[30]: 使能编码通道 此驱动未使用编码通道 无需设置
 		bit[29]: 使能预览通道
-	*/    
-	*CIIMGCPT |= ( ( 1<<31 ) | ( 1<<29 ) );
-	
+	*/
+	*CIIMGCPT =  ( 1<<31 ) | ( 1<<29  );
 	*CIPRSCCTRL |= ( 1<<15 );
 
 
@@ -694,13 +832,47 @@ static int cmos_ov7740_close ( struct file* file )
 /* 应用程序通过读的方式读取摄像头的数据 */
 static ssize_t cmos_ov7740_read ( struct file* filep, char __user* buf, size_t count, loff_t* pos )
 {
-	return 0;
+	size_t end_size;
+	int i;
+
+	//得到两者之间的小值
+	end_size = min_t ( size_t,buf_size,count );
+
+	wait_event_interruptible ( cam_wait_queue, ev_cam );
+
+	for ( i=0; i<4; i++ )
+	{
+		//拷贝数据给用户空间
+		if ( copy_to_user ( buf, img_buff[i].virt_address, end_size ) )
+		{
+			return -EFAULT;
+		}
+	}
+
+	ev_cam = 0;
+
+	return end_size;
 }
 
-
-static void cmos_ov7740_release(struct video_device *vdev)
+/*
+	注意:
+		该函数是必须的,否则在insmod的时候，会出错
+		在rmmod时释放分配的内存
+*/
+static void cmos_ov7740_release ( struct video_device* vdev )
 {
 
+	free_pages ( img_buff[0].virt_address,img_buff[0].order );
+	img_buff[0].phy_address = ( unsigned long ) NULL;
+
+	free_pages ( img_buff[1].virt_address,img_buff[1].order );
+	img_buff[1].phy_address = ( unsigned long ) NULL;
+
+	free_pages ( img_buff[2].virt_address,img_buff[2].order );
+	img_buff[2].phy_address = ( unsigned long ) NULL;
+
+	free_pages ( img_buff[3].virt_address,img_buff[3].order );
+	img_buff[3].phy_address = ( unsigned long ) NULL;
 
 }
 
@@ -800,8 +972,8 @@ static void cmos_ov7740_init ( void )
 
 	//读取摄像头的设备id
 	mid = i2c_smbus_read_byte_data ( cmos_ov7740_client, 0x0a ) <<8;
-	mid = i2c_smbus_read_byte_data ( cmos_ov7740_client, 0x0b );
-
+	mid |= i2c_smbus_read_byte_data ( cmos_ov7740_client, 0x0b );
+	printk ( "manufacture ID = 0x%4x\n", mid );
 
 	/* 使用厂家提供的初始化数组初始化摄像头寄存器
 
@@ -813,22 +985,6 @@ static void cmos_ov7740_init ( void )
 
 	}
 
-
-}
-
-
-static irqreturn_t cmos_ov7740_camif_irq_c ( int irq, void* dev_id )
-{
-
-	return IRQ_HANDLED;
-
-}
-
-
-static irqreturn_t cmos_ov7740_camif_irq_p ( int irq, void* dev_id )
-{
-
-	return IRQ_HANDLED;
 
 }
 
@@ -909,6 +1065,7 @@ static int __devexit cmos_ov7740_remove ( struct i2c_client* client )
 {
 	printk ( "%s %s %d\n", __FILE__, __FUNCTION__, __LINE__ );
 
+	//释放虚拟内存映射
 	iounmap ( GPJCON );
 	iounmap ( GPJDAT );
 	iounmap ( GPJUP );
@@ -932,6 +1089,9 @@ static int __devexit cmos_ov7740_remove ( struct i2c_client* client )
 	iounmap ( INTPND );
 	iounmap ( SUBSRCPND );
 
+	//释放中断
+	free_irq ( IRQ_S3C2440_CAM_C, NULL );
+	free_irq ( IRQ_S3C2440_CAM_P, NULL );
 	video_unregister_device ( &cmos_ov7740_vdev );
 	return 0;
 
