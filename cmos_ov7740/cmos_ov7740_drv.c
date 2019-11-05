@@ -31,20 +31,21 @@ static unsigned long* GPJUP;
 // CAMIF
 /*
 CISRCFMT:
-	bit[31] -- 选择传输方式为BT601或者BT656
-	bit[30] -- 设置偏移值(0 = +0 (正常情况下) - for YCbCr)
-	bit[29] -- 保留位,必须设置为0
+	bit[31]	-- 选择传输方式为BT601或者BT656(1-BT601)
+	bit[30]	-- 设置偏移值(0 = +0 (正常情况下) - for YCbCr)
+	bit[29]	-- 保留位,必须设置为0
 	bit[28:16]	-- 设置源图片的水平像素值(640)
-	bit[15:14]	-- 设置源图片的颜色顺序(0x02)
-	bit[12:0]		-- 设置源图片的垂直像素值(480)
+	bit[15:14]	-- 设置源图片的颜色顺序(存储格式)(02 = CbYCrY )
+	bit[12:0]	-- 设置源图片的垂直像素值(480)
 */
 static unsigned long* CISRCFMT;
+
 /*
 CIWDOFST:
-	bit[31] 	-- 1 = 使能窗口功能、0 = 不使用窗口功能
+	bit[31] 	  -- 1 = 使能窗口功能、0 = 不使用窗口功能（此处选1）
 	bit[30、15:12]-- 清除溢出标志位
-	bit[26:16]	-- 水平方向的裁剪的大小
-	bit[10:0]		-- 垂直方向的裁剪的大小
+	bit[26:16]	  -- 水平方向的裁剪的大小
+	bit[10:0]	  -- 垂直方向的裁剪的大小
 */
 static unsigned long* CIWDOFST;
 
@@ -54,13 +55,13 @@ CIGCTRL:
 	bit[30] 	-- 用于复位外部摄像头模块
 	bit[29] 	-- 保留位，必须设置为1
 	bit[28:27]	-- 用于选择信号源(00 = 输入源来自摄像头模块)
-	bit[26] 	-- 设置像素时钟的极性(猜0)
-	bit[25] 	-- 设置VSYNC的极性(0)
-	bit[24] 	-- 设置HREF的极性(0)
+	bit[26] 	-- 设置是否翻转像素时钟的极性(猜0)
+	bit[25] 	-- 设置是否翻转VSYNC的极性(0)
+	bit[24] 	-- 设置是否翻转HREF的极性(0)
 */
 static unsigned long* CIGCTRL;
 
-//设置显存物理地址
+//设置显存物理起始地址 用于DMA
 static unsigned long* CIPRCLRSA1;
 static unsigned long* CIPRCLRSA2;
 static unsigned long* CIPRCLRSA3;
@@ -68,7 +69,7 @@ static unsigned long* CIPRCLRSA4;
 /*
 CIPRTRGFMT:
 	bit[28:16] -- 表示目标图片的水平像素大小(TargetHsize_Pr)
-	bit[15:14] -- 是否旋转，我们这个驱动就不旋转了
+	bit[15:14] -- 是否旋转（00-不旋转）
 	bit[12:0]	 -- 表示目标图片的垂直像素大小(TargetVsize_Pr)
 */
 static unsigned long* CIPRTRGFMT;
@@ -95,7 +96,7 @@ CIPRSCCTRL:
 	bit[8:0]: 预览主缩放的垂直比(MainVerRatio_Pr)
 
 	bit[31]: 必须固定设置为1
-	bit[30]: 设置图像输出格式是0-RGB16、1-RGB24
+	bit[30]: 设置图像输出格式是0-RGB16、1-RGB24 
 	bit[15]: 预览缩放开始
 */
 static unsigned long* CIPRSCPRERATIO;
@@ -103,7 +104,7 @@ static unsigned long* CIPRSCPREDST;
 static unsigned long* CIPRSCCTRL;
 /*
 CIPRTAREA:
-	表示预览通道的目标区域
+	表示预览通道的目标区域大小 此区域用于DMA功能 值为目标宽度*目标高度
 */
 static unsigned long* CIPRTAREA;
 /*
@@ -320,9 +321,9 @@ static irqreturn_t cmos_ov7740_camif_irq_c ( int irq, void* dev_id )
 static irqreturn_t cmos_ov7740_camif_irq_p ( int irq, void* dev_id )
 {
 	/* 清中断 */
-	*SRCPND = 1<<6;
-	*INTPND = 1<<6;
-	*SUBSRCPND = 1<<12;
+	*SRCPND = 1<<6; //使能INT_CAM中断
+	*INTPND = 1<<6; //使能INT_CAM中断
+	*SUBSRCPND = 1<<12; //使能预览通道中断
 
 	ev_cam = 1;
 
@@ -683,12 +684,12 @@ static int cmos_ov7740_vidioc_streamon ( struct file* file, void* priv, enum v4l
 {
 	/*
 	CISRCFMT:
-		bit[31]	-- 选择传输方式为BT601或者BT656
+		bit[31]	-- 选择传输方式为BT601或者BT656(1-BT601)
 		bit[30]	-- 设置偏移值(0 = +0 (正常情况下) - for YCbCr)
 		bit[29]	-- 保留位,必须设置为0
 		bit[28:16]	-- 设置源图片的水平像素值(640)
-		bit[15:14]	-- 设置源图片的颜色顺序(0x0c --> 0x2)
-		bit[12:0]		-- 设置源图片的垂直像素值(480)
+		bit[15:14]	-- 设置源图片的颜色顺序(存储格式)(02 = CbYCrY )
+		bit[12:0]	-- 设置源图片的垂直像素值(480)
 	*/
 	*CISRCFMT |= ( 0<<30 ) | ( 0<<29 ) | ( CAM_SRC_XRES<<16 ) | ( CAM_ORDER_CbYCrY<<14 ) | ( CAM_SRC_YRES<<0 );
 
