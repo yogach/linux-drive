@@ -1,0 +1,4 @@
+1、i2c_new_device()创建i2c设备
+2、i2c_new_probed_device()创建i2c设备
+3、使用address_list与detect函数来分辨并创建设备
+4、完整at24c08驱动
