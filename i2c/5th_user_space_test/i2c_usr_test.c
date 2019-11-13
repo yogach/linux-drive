@@ -48,24 +48,23 @@ int main ( int argc, char** argv )
 		return -1;
 	}
 
-	if ( strcmp ( argv[4], "r" ) == 0 )
+	if (strcmp(argv[3], "r") == 0)
 	{
 	    //读操作
-		addr = strtoul ( argv[5], NULL, 0 );
+		addr = strtoul(argv[4], NULL, 0);
 		data = i2c_smbus_read_word_data(fd, addr);
 
 		//分别读出数据的字符、整形和16进制数
 		printf ( "data: %c, %d, 0x%2x\n", data, data, data );
 	}
-	else if ( ( strcmp ( argv[4], "w" ) == 0 ) && ( argc == 6 ) )
+	else if ((strcmp(argv[3], "w") == 0) && (argc == 6))
 	{
-		addr = strtoul ( argv[5], NULL, 0 );
-		data = strtoul ( argv[6], NULL, 0 );
+		addr = strtoul(argv[4], NULL, 0);
+		data = strtoul(argv[5], NULL, 0);
 
 		//写一个字节数据
 		i2c_smbus_write_byte_data(fd, addr, data);		
 
-		printf ( "write err, addr = 0x%02x, data = 0x%02x\n", addr, data );
 
 	}
 	else

@@ -6,7 +6,7 @@
 #include <linux/regmap.h>
 #include <linux/slab.h>
 
-struct i2c_client* at24cxx_client;
+static struct i2c_client *at24cxx_client;
 
 //如果无法确定下设备地址可以使用i2c_new_probed_device()进行新建设备
 //addr_list列表内填入需要注册设备的可以地址
@@ -17,7 +17,7 @@ static int at24cxx_dev_init ( void )
 	struct i2c_adapter* i2c_adap;
 	struct i2c_board_info at24cxx_info;
 
-	memset ( &at24cxx_info,9,sizeof ( struct i2c_board_info ) );
+	memset(&at24cxx_info, 0, sizeof(struct i2c_board_info));	
 	strlcpy ( at24cxx_info.type,"at24c08",I2C_NAME_SIZE ); //设置设备名
 
 	//驱动适配器 参数为总线编号 如果板子只有一个I2C控制器就填0
@@ -25,7 +25,10 @@ static int at24cxx_dev_init ( void )
 	at24cxx_client = i2c_new_probed_device ( i2c_adap, &at24cxx_info,addr_list,NULL );
 	i2c_put_adapter ( i2c_adap );
 
+	if (at24cxx_client)
 	return 0;
+	else
+		return -ENODEV;
 }
 
 static void at24cxx_dev_exit ( void )

@@ -5,6 +5,8 @@
 #include <linux/err.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
+#include <linux/fs.h>
+#include <asm/uaccess.h>
 
 static int major;
 static struct class *class;
@@ -43,7 +45,7 @@ static ssize_t at24cxx_write(struct file *file, const char __user *buf, size_t c
 	printk("addr = 0x%02x, data = 0x%02x\n", addr, data);
 
     if(!i2c_smbus_write_byte_data(at24cxx_client,addr,data))
-		return 0;
+		return 2; //此处返回写入的数据个数
 	else
 		return -EIO;
     	

@@ -11,7 +11,7 @@ static struct i2c_board_info at24cxx_info = {
 	I2C_BOARD_INFO("at24c08", 0x50),
 };
 
-struct i2c_client *at24cxx_client;
+static struct i2c_client *at24cxx_client;
 
 static int at24cxx_dev_init(void)
 {
