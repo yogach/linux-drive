@@ -24,6 +24,13 @@
 #include <plat/regs-iic.h>
 #include <plat/iic.h>
 
+enum s3c24xx_i2c_state
+{
+
+
+};
+
+
 struct s3c2440_i2c_regs
 {
 	unsigned int iiccon;
@@ -68,6 +75,14 @@ static void s3c2440_i2c_start ( void )
 		s3c2440_i2c_regs->iicstat  = 0xf0;		  // 主机发送，启动
 
 	}
+
+
+
+}
+
+static void s3c2440_i2c_stop ( int err )
+{
+  s3c2440_i2c_xfer_data.state = 
 
 
 
