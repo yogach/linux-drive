@@ -357,13 +357,16 @@ static int cmos_ov7740_vidioc_enum_fmt_vid_cap ( struct file* file, void*  priv,
 {
 	struct cmos_ov7740_fmt* fmt;
 
+	//如果要查询的数超过数组长度
 	if ( f->index >= ARRAY_SIZE ( formats ) )
 	{
 		return -EINVAL;
 	}
 
+    //得到指定数组内容
 	fmt = &formats[f->index];
 
+    //拷贝 
 	strlcpy ( f->description,fmt->name,sizeof ( f->description ) );
 	f->pixelformat = fmt->fourcc;
 
@@ -423,7 +426,7 @@ static int cmos_ov7740_vidioc_s_fmt_vid_cap ( struct file* file, void* priv,stru
 
 		*CIPRSCCTRL |= ( 0<<30 );
 		//计算一行所占的字节数 整个空间所占的字节数 bpp设置为16
-		f->fmt.pix.bytesperline = ( f->fmt.pix.width * 16 ) >> 3;
+		f->fmt.pix.bytesperline = ( f->fmt.pix.width * 16 ) >> 3; //一行所占的字节数为一行像素数乘bpp除8
 		f->fmt.pix.sizeimage = f->fmt.pix.height * f->fmt.pix.bytesperline;
 
 		//记录一行所占字节与总大小
@@ -459,6 +462,7 @@ static int cmos_ov7740_vidioc_reqbufs ( struct file* file, void* priv, struct v4
 {
 	unsigned int order;
 
+    //get_order为一种可移植的方法
 	order = get_order ( buf_size ); //计算buf_size需要的order值的大小(按字节计算)
 
 	/************************************************/
