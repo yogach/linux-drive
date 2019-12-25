@@ -69,14 +69,16 @@ void  s3c2440_select_chip(struct mtd_info *mtd, int chip)
 
 void s3c2440_cmd_ctrl(struct mtd_info *mtd, int dat,unsigned int ctrl)
 {
-   if(ctrl & NAND_CLE)
+   if(ctrl & NAND_CLE) //CLE代表发命令
    	{
-	   s3c_nand_regs->nfdata = dat;
+   	  /* 发命令: NFCMMD=dat */
+	   s3c_nand_regs->nfcmd = dat;
 
    }
    else
    {
-
+      /* 发地址: NFADDR=dat */
+       s3c_nand_regs->nfaddr = dat;
    }
 
 
@@ -84,7 +86,7 @@ void s3c2440_cmd_ctrl(struct mtd_info *mtd, int dat,unsigned int ctrl)
 
 int	s3c2440_dev_ready(struct mtd_info *mtd)
 {
-
+  return (s3c_nand_regs->nfstat & (1<<0));
 
 }
 
@@ -107,13 +109,14 @@ static int s3c_nand_init(void)
    s3c_nand->IO_ADDR_W = &s3c_nand_regs->nfdata;
    s3c_nand->IO_ADDR_R = &s3c_nand_regs->nfdata;
    s3c_nand->dev_ready = s3c2440_dev_ready;
+   s3c_nand->ecc.mode    = NAND_ECC_SOFT; //设置使用ecc
 
 
 
    /* 3. 硬件相关的设置: 根据NAND FLASH的手册设置时间参数 */
    /* 使能NAND FLASH控制器的时钟 */
    clk = clk_get(NULL,"nand");
-   clk_enable(clk);   
+   clk_enable(clk);          /* 实际上就是设置CLKCON'bit[4] */
 
    /* HCLK=100MHz
 		* TACLS:  发出CLE/ALE之后多长时间才发出nWE信号, 从NAND手册可知CLE/ALE与nWE可以同时发出,所以TACLS=0
