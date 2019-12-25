@@ -53,6 +53,31 @@ static struct mtd_info *s3c_mtd;
 
 static struct s3c_nand_regs *s3c_nand_regs;
 
+//驱动中的mtd分区 用来表示每个区域的起始地址和大小 需要与u-boot内的mtd分区保持一致
+static struct mtd_partition s3c_nand_parts[] = {
+	[0] = {
+        .name   = "bootloader",
+        .size   = 0x00040000,
+		.offset	= 0,
+	},
+	[1] = {
+        .name   = "params",
+        .offset = MTDPART_OFS_APPEND,
+        .size   = 0x00020000,
+	},
+	[2] = {
+        .name   = "kernel",
+        .offset = MTDPART_OFS_APPEND,
+        .size   = 0x00200000,
+	},
+	[3] = {
+        .name   = "root",
+        .offset = MTDPART_OFS_APPEND,
+        .size   = MTDPART_SIZ_FULL,
+	}
+};
+
+
 void  s3c2440_select_chip(struct mtd_info *mtd, int chip)
 {
    if(chip == -1)
@@ -143,15 +168,18 @@ static int s3c_nand_init(void)
    
    nand_scan(s3c_mtd,1);//最大芯片数选1
 
-   /* 5. add_mtd_partitions */
-
+   /* 5. add_mtd_partitions 添加mtd分区*/ 
+   add_mtd_partitions(s3c_mtd, s3c_nand_parts, 4);
 
      return 0;
 }
 
 static void s3c_nand_exit(void)
 {
-
+  del_mtd_partitions(s3c_mtd);
+  kfree(s3c_mtd);
+  iounmap(s3c_nand_regs);
+  kfree(s3c_nand);
 
 }
 
