@@ -42,6 +42,7 @@ static int s3c_nor_init(void)
     s3c_nor_map->size = 0x1000000; /* >= NOR的真正大小 */
 	s3c_nor_map->bankwidth = 2; //单位是8位 2代表16位位宽
 	s3c_nor_map->virt =ioremap(s3c_nor_map->phys, s3c_nor_map->size) ;
+	simple_map_init(s3c_nor_map);
 	
 
 	/* 3. 使用: 调用NOR FLASH协议层提供的函数来识别 */	
@@ -52,13 +53,14 @@ static int s3c_nor_init(void)
 	{
 		printk("use jedec_probe\n");
 		s3c_nor_mtd =  do_map_probe("jedec_probe", s3c_nor_map);
+    }
 		if(!s3c_nor_mtd)
 		{
           iounmap(s3c_nor_map->virt);
 		  kfree(s3c_nor_map);
 		  return -EIO;
 		}	
-    }
+    
 	
 	/* 4. add_mtd_partitions 添加mtd分区 */
 	add_mtd_partitions(s3c_nor_mtd,s3c_nor_parts,2); //
