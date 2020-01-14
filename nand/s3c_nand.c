@@ -78,9 +78,9 @@ static struct mtd_partition s3c_nand_parts[] = {
 };
 
 
-void  s3c2440_select_chip(struct mtd_info *mtd, int chip)
+static void s3c2440_select_chip(struct mtd_info *mtd, int chipnr)
 {
-   if(chip == -1)
+	if (chipnr == -1)
    	{
 	/* 取消选中: NFCONT[1]设为1 */
 	s3c_nand_regs->nfcont |=(1<<1); 
@@ -92,7 +92,7 @@ void  s3c2440_select_chip(struct mtd_info *mtd, int chip)
    	}
 }
 
-void s3c2440_cmd_ctrl(struct mtd_info *mtd, int dat,unsigned int ctrl)
+static void s3c2440_cmd_ctrl(struct mtd_info *mtd, int dat, unsigned int ctrl)
 {
    if(ctrl & NAND_CLE) //CLE代表发命令
    	{
@@ -109,7 +109,7 @@ void s3c2440_cmd_ctrl(struct mtd_info *mtd, int dat,unsigned int ctrl)
 
 }
 
-int	s3c2440_dev_ready(struct mtd_info *mtd)
+static int s3c2440_dev_ready(struct mtd_info *mtd)
 {
   return (s3c_nand_regs->nfstat & (1<<0));
 
