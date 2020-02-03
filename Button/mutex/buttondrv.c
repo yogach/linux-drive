@@ -32,7 +32,7 @@ static volatile int ev_press = 0;
 
 static struct fasync_struct *button_async;
 
-static DECLARE_MUTEX(button_lock);
+static DECLARE_MUTEX(button_lock); //初始化信号量并设置为1
 
 
 
