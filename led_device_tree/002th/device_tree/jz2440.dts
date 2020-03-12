@@ -21,16 +21,16 @@
 
 /dts-v1/;
 
-/ {
-	model = "SMDK24440";
-	compatible = "samsung,smdk2440";
+/ {//此处是树的起点           
+	model = "SMDK24440"; //
+	compatible = "samsung,smdk2440"; //支持三星公司的smdk2440
 
 	#address-cells = <1>;
 	#size-cells = <1>;
 		
 	memory@30000000 {
 		device_type = "memory";
-		reg =  <0x30000000 0x4000000>;
+		reg =  <0x30000000 0x4000000 0 0x4096>;
 	};
 /*
 	cpus {

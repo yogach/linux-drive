@@ -119,7 +119,7 @@ static int led_probe(struct platform_device *pdev)
 		led_pin = res->start;
 	}
 	else {
-		/* 获得pin属性 */
+		/* 从设备数节点中获得名字为的pin属性 */
 		of_property_read_s32(pdev->dev.of_node, "pin", &led_pin);
 	}
 

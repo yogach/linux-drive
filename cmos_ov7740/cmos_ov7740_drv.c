@@ -987,7 +987,6 @@ static void cmos_ov7740_init ( void )
 	{
 		i2c_smbus_write_byte_data ( cmos_ov7740_client, ov7740_setting_30fps_VGA_640_480[i].regaddr, ov7740_setting_30fps_VGA_640_480[i].value  );
 		mdelay ( 2 );
-
 	}
 
 
