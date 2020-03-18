@@ -50,7 +50,7 @@ static struct timer_list buttons_timer;
 static int major;
 static struct class *button_class;
 static struct device *button_class_dev;
-struct semaphore button_lock; //定义信号量
+//struct semaphore button_lock; //定义信号量
 
 volatile unsigned long *gpfcon; 
 volatile unsigned long *gpfdat;
@@ -66,7 +66,7 @@ static irqreturn_t buttons_irq(int irq, void *dev_id)
 {
    //启动定时器进行消抖处理 定时时间10ms
    irq_pd = (struct pin_desc *)dev_id;
-   mod_timer(&buttons_timer,jiffies+1); //1等于10ms
+	mod_timer(&buttons_timer, jiffies+1); //设置定时器时间 1等于10ms
    return IRQ_RETVAL(IRQ_HANDLED);
 }
 
@@ -87,7 +87,7 @@ static int button_drv_open(struct inode *inode, struct file *file)
   //申请中断
   for ( i=0; i< ( sizeof ( pins_desc ) /sizeof ( pins_desc[0] ) ); i++ )
   {
-  	  res = request_irq(pins_desc[i].irq, buttons_irq, 0, pins_desc[i].name, &pins_desc[i].pin);
+  	  res = request_irq(pins_desc[i].irq, buttons_irq, 0, pins_desc[i].name, &pins_desc[i]);
 	  if(res)
 	  {
 	  	printk("request irq error index :%d",i);
@@ -105,7 +105,7 @@ static int button_drv_release (struct inode *inode, struct file *file)
    //释放中断
    for (i=0; i< ( sizeof ( pins_desc ) /sizeof ( pins_desc[0] ) ); i++ )
    {
-     free_irq(pins_desc[i].irq, &pins_desc[i].pin);
+     free_irq(pins_desc[i].irq, &pins_desc[i]);
    }
    
    return 0;
@@ -177,7 +177,7 @@ static int buttons_drv_init(void)
    gpgdat = gpgcon +1;
 
    //初始化信号量
-   sema_init(&button_lock, 1);
+//   sema_init(&button_lock, 1);
    return 0;
 
 }
@@ -203,20 +203,32 @@ static int buttons_probe ( struct platform_device* pdev )
 	struct resource* res;
 	int i;
 
+    /*
+	get irq:1
+	pins_desc[0].pin = 84
+	get irq:2
+	pins_desc[1].pin = 86
+	get irq:3
+	pins_desc[2].pin = 95
+	get irq:15
+	pins_desc[3].pin = 103
+
+	*/
 	for ( i=0; i< ( sizeof ( pins_desc ) /sizeof ( pins_desc[0] ) ); i++ )
 	{
-		res = platform_get_resource ( pdev, IORESOURCE_IRQ, i );
+		res = platform_get_resource ( pdev, IORESOURCE_IRQ, i ); //获取irq资源
 		if ( res )
 		{
 			pins_desc[i].irq = res->start;
-			printk ( "get irq:%d",pins_desc[i].irq );
+			printk ( "get irq:%d\n",pins_desc[i].irq );
 		}
 		else
 		{
-			printk ( "can't get irq:%d",i );
+			printk ( "can't get irq:%d\n",i );
+            return -1;
 		}
-        pins_desc[i].pin = of_get_named_gpio(dev_node,"eint-pins",i);
-		printk("get gpio:%d",pins_desc[i].pin);	
+        pins_desc[i].pin = of_get_named_gpio(dev_node,"eint-pins",i); //在节点中查找名字为eint-pins的属性
+		printk("pins_desc[%d].pin = %d\n", i, pins_desc[i].pin);	
 	}
 	return buttons_drv_init();
 
@@ -232,7 +244,7 @@ static int buttons_remove ( struct platform_device* pdev )
 
 static const struct of_device_id of_match_buttons[] =
 {
-	{.compatible = "jz2440_button", .data= NULL},
+	{.compatible = "jz2440_button", .data= NULL}, //匹配名字为jz2440_button的子节点
 	{/* sentinel */},
 
 };

@@ -1,0 +1,404 @@
+/dts-v1/;
+
+/ {
+	compatible = "samsung,s3c2440", "samsung,smdk2440";
+	interrupt-parent = <0x1>;
+	#address-cells = <0x1>;
+	#size-cells = <0x1>;
+	model = "JZ2440";
+
+	aliases {
+		pinctrl0 = "/pinctrl@56000000";
+		serial0 = "/serial@50000000";
+		serial1 = "/serial@50004000";
+		serial2 = "/serial@50008000";
+		i2c1 = "/i2c-gpio-1";
+	};
+
+	interrupt-controller@4a000000 {
+		compatible = "samsung,s3c2410-irq";
+		reg = <0x4a000000 0x100>;
+		interrupt-controller;
+		#interrupt-cells = <0x4>;
+		phandle = <0x1>;
+	};
+
+	pinctrl@56000000 {
+		reg = <0x56000000 0x1000>;
+		compatible = "samsung,s3c2440-pinctrl";
+
+		wakeup-interrupt-controller {
+			compatible = "samsung,s3c2410-wakeup-eint";
+			interrupts = <0x0 0x0 0x0 0x3 0x0 0x0 0x1 0x3 0x0 0x0 0x2 0x3 0x0 0x0 0x3 0x3 0x0 0x0 0x4 0x4 0x0 0x0 0x5 0x4>;
+		};
+
+		gpa {
+			gpio-controller;
+			#gpio-cells = <0x2>;
+		};
+
+		gpb {
+			gpio-controller;
+			#gpio-cells = <0x2>;
+			phandle = <0xd>;
+		};
+
+		gpc {
+			gpio-controller;
+			#gpio-cells = <0x2>;
+		};
+
+		gpd {
+			gpio-controller;
+			#gpio-cells = <0x2>;
+		};
+
+		gpe {
+			gpio-controller;
+			#gpio-cells = <0x2>;
+			phandle = <0x7>;
+		};
+
+		gpf {
+			gpio-controller;
+			#gpio-cells = <0x2>;
+			interrupt-controller;
+			#interrupt-cells = <0x2>;
+			phandle = <0x6>;
+		};
+
+		gpg {
+			gpio-controller;
+			#gpio-cells = <0x2>;
+			interrupt-controller;
+			#interrupt-cells = <0x2>;
+			phandle = <0xe>;
+		};
+
+		gph {
+			gpio-controller;
+			#gpio-cells = <0x2>;
+		};
+
+		gpj {
+			gpio-controller;
+			#gpio-cells = <0x2>;
+		};
+
+		uart0-data {
+			samsung,pins = "gph-0", "gph-1";
+			samsung,pin-function = <0x2>;
+			phandle = <0x3>;
+		};
+
+		i2c0-bus {
+			samsung,pins = "gpe-14", "gpe-15";
+			samsung,pin-function = <0x2>;
+			phandle = <0x4>;
+		};
+
+		nand_pinctrl {
+			samsung,pins = "gpa-17", "gpa-18", "gpa-19", "gpa-20", "gpa-22";
+			samsung,pin-function = <0x1>;
+			phandle = <0x5>;
+		};
+
+		lcd_pinctrl {
+			samsung,pins = "gpc-8", "gpc-9", "gpc-10", "gpc-11", "gpc-12", "gpc-13", "gpc-14", "gpc-15", "gpd-0", "gpd-1", "gpd-2", "gpd-3", "gpd-4", "gpd-5", "gpd-6", "gpd-7", "gpd-8", "gpd-9", "gpd-10", "gpd-11", "gpd-12", "gpd-13", "gpd-14", "gpd-15", "gpc-1", "gpc-2", "gpc-3", "gpc-4";
+			samsung,pin-function = <0x2>;
+			phandle = <0x8>;
+		};
+
+		lcd_backlight {
+			samsung,pins = "gpg-4";
+			samsung,pin-function = <0x3>;
+			phandle = <0x9>;
+		};
+
+		uda1340_codec_pinctrl {
+			samsung,pins = "gpb-4", "gpb-3", "gpb-2";
+			samsung,pin-function = <0x1>;
+			phandle = <0xc>;
+		};
+
+		s3c2440_iis_pinctrl {
+			samsung,pins = "gpe-0", "gpe-1", "gpe-2", "gpe-3", "gpe-4";
+			samsung,pin-function = <0x2>;
+			phandle = <0xa>;
+		};
+	};
+
+	timer@51000000 {
+		compatible = "samsung,s3c2410-pwm";
+		reg = <0x51000000 0x1000>;
+		interrupts = <0x0 0x0 0xa 0x3 0x0 0x0 0xb 0x3 0x0 0x0 0xc 0x3 0x0 0x0 0xd 0x3 0x0 0x0 0xe 0x3>;
+		#pwm-cells = <0x4>;
+		clock-names = "timers";
+		clocks = <0x2 0x19>;
+	};
+
+	serial@50000000 {
+		compatible = "samsung,s3c2440-uart";
+		reg = <0x50000000 0x4000>;
+		interrupts = <0x1 0x1c 0x0 0x4 0x1 0x1c 0x1 0x4>;
+		status = "okay";
+		clock-names = "uart";
+		clocks = <0x2 0x10>;
+		pinctrl-names = "default";
+		pinctrl-0 = <0x3>;
+	};
+
+	serial@50004000 {
+		compatible = "samsung,s3c2410-uart";
+		reg = <0x50004000 0x4000>;
+		interrupts = <0x1 0x17 0x3 0x4 0x1 0x17 0x4 0x4>;
+		status = "disabled";
+	};
+
+	serial@50008000 {
+		compatible = "samsung,s3c2410-uart";
+		reg = <0x50008000 0x4000>;
+		interrupts = <0x1 0xf 0x6 0x4 0x1 0xf 0x7 0x4>;
+		status = "disabled";
+	};
+
+	watchdog@53000000 {
+		compatible = "samsung,s3c2410-wdt";
+		reg = <0x53000000 0x100>;
+		interrupts = <0x1 0x9 0x1b 0x3>;
+		status = "okay";
+		clocks = <0x2 0x6>;
+		clock-names = "watchdog";
+	};
+
+	rtc@57000000 {
+		compatible = "samsung,s3c2410-rtc";
+		reg = <0x57000000 0x100>;
+		interrupts = <0x0 0x0 0x1e 0x3 0x0 0x0 0x8 0x3>;
+		status = "okay";
+		clocks = <0x2 0x1a>;
+		clock-names = "rtc";
+	};
+
+	i2c@54000000 {
+		compatible = "samsung,s3c2440-i2c";
+		reg = <0x54000000 0x100>;
+		interrupts = <0x0 0x0 0x1b 0x3>;
+		#address-cells = <0x1>;
+		#size-cells = <0x0>;
+		status = "disabled";
+		clocks = <0x2 0x13>;
+		clock-names = "i2c";
+		pinctrl-names = "default";
+		pinctrl-0 = <0x4>;
+	};
+
+	cpus {
+		#address-cells = <0x1>;
+		#size-cells = <0x0>;
+
+		cpu {
+			compatible = "arm,arm920t";
+		};
+	};
+
+	xti_clock {
+		compatible = "fixed-clock";
+		clock-frequency = <0xb71b00>;
+		clock-output-names = "xti";
+		#clock-cells = <0x0>;
+	};
+
+	clock-controller@4c000000 {
+		compatible = "samsung,s3c2440-clock";
+		reg = <0x4c000000 0x20>;
+		#clock-cells = <0x1>;
+		phandle = <0x2>;
+	};
+
+	nand@4e000000 {
+		compatible = "samsung,s3c2440-nand";
+		reg = <0x4e000000 0x40>;
+		interrupts = <0x0 0x0 0x18 0x3>;
+		clocks = <0x2 0x23>;
+		clock-names = "nand";
+		pinctrl-names = "default";
+		pinctrl-0 = <0x5>;
+		status = "okay";
+		nand,tacls = <0xa>;
+		nand,twrph0 = <0x19>;
+		nand,twrph1 = <0xa>;
+		#address-cells = <0x1>;
+		#size-cells = <0x1>;
+
+		partitions {
+			#address-cells = <0x1>;
+			#size-cells = <0x1>;
+			nr-chips = <0x1>;
+			set-name = "jz2440-0";
+
+			partition@0 {
+				label = "bootloader";
+				reg = <0x0 0x40000>;
+				read-only;
+			};
+
+			partition@40000 {
+				label = "device_tree";
+				reg = <0x40000 0x20000>;
+				read-only;
+			};
+
+			partition@60000 {
+				label = "params";
+				reg = <0x60000 0x20000>;
+				read-only;
+			};
+
+			partition@80000 {
+				label = "kernel";
+				reg = <0x80000 0x400000>;
+				read-only;
+			};
+
+			partition@480000 {
+				label = "rootfs";
+				reg = <0x480000 0x0>;
+			};
+		};
+	};
+
+	usb_ohci@49000000 {
+		compatible = "samsung,s3c2440-ohci";
+		reg = <0x49000000 0x60>;
+		interrupts = <0x0 0x0 0x1a 0x3>;
+		clocks = <0x2 0x21 0x2 0x7>;
+		clock-names = "usb-host", "usb-bus-host";
+		status = "okay";
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x30000000 0x4000000>;
+	};
+
+	chosen {
+		bootargs = "noinitrd root=/dev/mtdblock4 rw init=/linuxrc console=ttySAC0,115200";
+	};
+
+	srom-cs4@20000000 {
+		compatible = "simple-bus";
+		#address-cells = <0x1>;
+		#size-cells = <0x1>;
+		reg = <0x20000000 0x8000000>;
+		ranges;
+
+		ethernet@20000000 {
+			compatible = "davicom,dm9000";
+			reg = <0x20000000 0x2 0x20000004 0x2>;
+			interrupt-parent = <0x6>;
+			interrupts = <0x7 0x1>;
+			local-mac-address = [00 00 de ad be ef];
+			davicom,no-eeprom;
+		};
+	};
+
+	i2c-gpio-1 {
+		compatible = "i2c-gpio";
+		#address-cells = <0x1>;
+		#size-cells = <0x0>;
+		gpios = <0x7 0xf 0x0 0x7 0xe 0x0>;
+		i2c-gpio,delay-us = <0x5>;
+		status = "disabled";
+
+		eeprom@50 {
+			compatible = "24c02";
+			reg = <0x50>;
+			pagesize = <0x20>;
+			status = "okay";
+		};
+	};
+
+	fb@4d000000 {
+		compatible = "jz2440,lcd";
+		reg = <0x4d000000 0x60>;
+		interrupts = <0x0 0x0 0x10 0x3>;
+		clocks = <0x2 0x20>;
+		clock-names = "lcd";
+		pinctrl-names = "default";
+		pinctrl-0 = <0x8 0x9>;
+		status = "okay";
+		lcdcon5 = <0xb09>;
+		type = <0x60>;
+		width = [01 e0];
+		height = [01 10];
+		pixclock = <0x186a0>;
+		xres = [01 e0];
+		yres = [01 10];
+		bpp = [00 10];
+		left_margin = [00 02];
+		right_margin = [00 02];
+		hsync_len = [00 29];
+		upper_margin = [00 02];
+		lower_margin = [00 02];
+		vsync_len = [00 0a];
+	};
+
+	jz2440ts@5800000 {
+		compatible = "jz2440,ts";
+		reg = <0x58000000 0x100>;
+		reg-names = "adc_ts_physical";
+		interrupts = <0x1 0x1f 0x9 0x3 0x1 0x1f 0xa 0x3>;
+		interrupt-names = "int_ts", "int_adc_s";
+		clocks = <0x2 0x16>;
+		clock-names = "adc";
+	};
+
+	s3c2410-dma@4B000000 {
+		compatible = "s3c2440-dma";
+		reg = <0x4b000000 0x1000>;
+		interrupts = <0x0 0x0 0x11 0x3 0x0 0x0 0x12 0x3 0x0 0x0 0x13 0x3 0x0 0x0 0x14 0x3>;
+		#dma-cells = <0x1>;
+		phandle = <0xb>;
+	};
+
+	s3c2440_iis@55000000 {
+		compatible = "s3c24xx-iis";
+		reg = <0x55000000 0x100>;
+		clocks = <0x2 0x18>;
+		clock-names = "iis";
+		pinctrl-names = "default";
+		pinctrl-0 = <0xa>;
+		dmas = <0xb 0x9 0xb 0xa>;
+		dma-names = "rx", "tx";
+	};
+
+	s3c24xx_uda134x {
+		compatible = "s3c24xx_uda134x";
+		clocks = <0x2 0x2 0x2 0x18>;
+		clock-names = "mpll", "iis";
+	};
+
+	uda134x-codec {
+		compatible = "uda134x-codec";
+		pinctrl-names = "default";
+		pinctrl-0 = <0xc>;
+		uda,clk_gpio = <0xd 0x4 0x1>;
+		uda,data_gpio = <0xd 0x3 0x1>;
+		uda,mode_gpio = <0xd 0x2 0x1>;
+		uda,use_gpios;
+		uda,data_hold;
+		uda,data_setup;
+		uda,clock_high;
+		uda,mode_hold;
+		uda,mode;
+		uda,mode_setup;
+		uda,model = <0x2>;
+	};
+
+	buttons {
+		compatible = "jz2440_button";
+		eint-pins = <0x6 0x0 0x0 0x6 0x2 0x0 0xe 0x3 0x0 0xe 0xb 0x0>;
+		interrupts-extended = <0x1 0x0 0x0 0x0 0x3 0x1 0x0 0x0 0x2 0x3 0xe 0x3 0x3 0xe 0xb 0x3>;
+	};
+};
