@@ -203,7 +203,7 @@ static int buttons_probe ( struct platform_device* pdev )
 	struct resource* res;
 	int i;
 
-    /*
+    /* 获取到的pin的数值代表什么意思？
 	get irq:1
 	pins_desc[0].pin = 84
 	get irq:2
