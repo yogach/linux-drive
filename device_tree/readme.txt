@@ -1,0 +1,2 @@
+jz2440_irq.dts设备树
+jz2440_irq_all.dts反编译dtb文件得到的设备树

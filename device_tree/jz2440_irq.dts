@@ -148,11 +148,12 @@
     };
     
     buttons {
-        compatible = "jz2440_button";
-		eint-pins  = <&gpf 0 0>, <&gpf 2 0>, <&gpg 3 0>, <&gpg 11 0>;
-        interrupts-extended = <&intc 0 0 0 3>,
+        compatible = "jz2440_button"; 
+        eint-pins  = <&gpf 0 0>, <&gpf 2 0>, <&gpg 3 0>, <&gpg 11 0>; 
+
+        interrupts-extended = <&intc 0 0 0 3>,   //intc父中断控制器 0-中断控制器编号 0-父中断号 0-硬件中断号 3-触发方式
                               <&intc 0 0 2 3>,
-                              <&gpg 3 3>,
+                              <&gpg 3 3>, //3-中断号 3-触发方式
                               <&gpg 11 3>;
     };
     
