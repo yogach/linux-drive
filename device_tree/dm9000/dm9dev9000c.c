@@ -96,6 +96,9 @@ V2.09 05/24/2007	-support ethtool and mii-tool
 #include <asm/irq.h>
 #include <asm/io.h>
 //#include <asm/arch-s3c2410/regs-mem.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/of_platform.h>
 
 #include "dm9000.h"
 
@@ -1894,7 +1897,7 @@ MODULE_PARM_DESC ( iobase, "EtherLink I/O base address" );
    when user used insmod to add module, system invoked init_module()
    to initilize and register.
 */
-int __init dm9000c_init ( void )
+int  dm9000c_init ( void )
 {
 	volatile unsigned long* bwscon; // 0x48000000
 	volatile unsigned long* bankcon4; // 0x48000014
@@ -1968,7 +1971,7 @@ int __init dm9000c_init ( void )
    when user used rmmod to delete module, system invoked clean_module()
    to  un-register DEVICE.
 */
-void __exit dm9000c_exit ( void )
+void  dm9000c_exit ( void )
 {
 	struct net_device* dev = dmfe_dev;
 	DMFE_DBUG ( 0, "clean_module()", 0 );
