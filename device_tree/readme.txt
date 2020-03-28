@@ -1,3 +1,4 @@
 jz2440_irq.dts设备树
 jz2440_irq_all.dts反编译dtb文件得到的设备树
 /dts文件里的是jz2440_irq.dts里include的所有文件
+/lcd文件夹中另有设备树文件
