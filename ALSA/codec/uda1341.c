@@ -12,11 +12,20 @@ static struct snd_soc_codec_driver soc_codec_dev_uda1341 =
 
 };
 
+static int uda1341_hw_params(struct snd_pcm_substream *substream,
+	struct snd_pcm_hw_params *params,
+	struct snd_soc_dai *dai)
+{
+    /* 根据params的值,设置UDA1341的寄存器 */
+    return 0;
+}
+
+
 
 //iis 开启、关闭、参数设置 
 static const struct snd_soc_dai_ops uda1341_dai_ops = 
 {
-
+     .hw_params	= uda1341_hw_params,
 };
 
 //指明uda1341 iis的通道数 采样率 格式

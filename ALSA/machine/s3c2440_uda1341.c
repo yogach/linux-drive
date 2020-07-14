@@ -18,14 +18,14 @@
  */
 
 //相关操作函数
-static  struct snd_soc_ops s3c2440_uda1341_ops = 
+static struct snd_soc_ops s3c2440_uda1341_ops =
 {
-    //.hw_params = s3c24xx_uda134x_hw_params,
+	//.hw_params = s3c24xx_uda134x_hw_params,
 };
 
 
 //指明需要使用的各部分驱动的名字
-static struct snd_soc_dai_link s3c2440_uda1341_dai_link = 
+static struct snd_soc_dai_link s3c2440_uda1341_dai_link =
 {
 	.name = "100ask_UDA1341",
 	.stream_name = "100ask_UDA1341",
@@ -45,7 +45,8 @@ static struct snd_soc_card myalsa_card =
 	.num_links = 1, //link数量
 };
 
-static void asoc_release(struct device * dev){
+static void asoc_release ( struct device* dev )
+{
 }
 
 
