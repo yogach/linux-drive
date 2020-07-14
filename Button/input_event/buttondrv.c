@@ -24,16 +24,10 @@ cat /dev/tty1
 按:s2,s3,s4
 就可以得到ls
 
-
 或者：
 exec 0</dev/tty1  把标准输入改成/dev/tty1 等待tty1输入数据
 然后可以使用按键来输入
-
-
-
 */
-
-
 
 static struct timer_list buttons_timer; //初始化定时器
 static struct input_dev* buttons_dev;
@@ -125,21 +119,12 @@ static int buttons_init ( void )
 	//添加定时器
 	add_timer ( &buttons_timer );
 
-
-
 	//中断初始化
 	for ( i=0; i<; i++ )
 	{
-		request_irq ( g_pindesc[i].irq, button_irq, IRQT_BOTHEDGE, g_pindesc[i].name, &g_pindesc[i].key_val )
-
+		request_irq ( g_pindesc[i].irq, button_irq, IRQT_BOTHEDGE, g_pindesc[i].name, &g_pindesc[i].key_val );
 	}
-
-
-
 }
-
-
-
 
 static int buttons_exit ( void )
 {
@@ -156,8 +141,6 @@ static int buttons_exit ( void )
 
 
 }
-
-
 
 module_init ( buttons_init );
 
