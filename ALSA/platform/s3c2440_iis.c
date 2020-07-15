@@ -15,7 +15,7 @@ static volatile unsigned int *gpecon;
 static volatile	struct s3c2440_iis_regs *iis_regs;
 
 static int s3c2440_i2s_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *param,
+	struct snd_pcm_hw_params *params,
 	struct snd_soc_dai *dai)
 {
    /* 根据params设置IIS控制器 */
