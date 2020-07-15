@@ -349,11 +349,11 @@ static struct snd_soc_codec_driver soc_codec_dev_uda1341 = {
 	* 只能在写入时保存起来
 	*/
 	.reg_cache_size = sizeof ( uda1341_reg ), //所有寄存器占据的空间大小
-	.reg_word_size = sizeof ( u8 ), //每个寄存器的大小
-	.reg_cache_default = uda1341_reg, //寄存器的默认值
-	.reg_cache_step = 1,
-	.read  = uda1341_read_reg_cache,   //读寄存器函数
-	.write = uda1341_write_reg,  /* 写寄存器 */
+	.reg_word_size = sizeof ( u8 ),           //每个寄存器的大小
+	.reg_cache_default = uda1341_reg,         //寄存器的默认值
+	.reg_cache_step = 1,                      //用几个字节表示一个寄存器
+	.read  = uda1341_read_reg_cache,          //读寄存器函数
+	.write = uda1341_write_reg,               // 写寄存器 
 };
 
 static void uda1341_init_regs ( struct snd_soc_codec* codec )
