@@ -154,13 +154,68 @@ static const char uda1341_data_bit[UDA1341_REG_NUM] = {
 static volatile unsigned int *gpbdat;
 static volatile unsigned int *gpbcon;
 
-
 static void uda1341_init_regs ( struct snd_soc_codec* codec );
+
+/*
+ * 获得音量信息,比如最小值最大值
+ */
+static int uda1341_info_vol(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER; //音量为整数数据
+	uinfo->count = 2;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 63;
+	return 0;
+}
+
+/*
+ * 获得当前音量值
+ */
+static int uda1341_get_vol(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+
+	ucontrol->value.integer.value[1] = \
+	ucontrol->value.integer.value[0] = 63 - snd_soc_read(codec, UDA1341_DATA00); //read 实际会调用到本函数内注册的snd_soc_codec_driverd.read函数
+	return 0;
+}
+
+/*
+ * 设置当前音量值
+ */
+static int uda1341_put_vol(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	unsigned int val;
+
+	val = 63 - ucontrol->value.integer.value[0]; //寄存器值为0时 音量最大 应用程序则是相反的
+
+	snd_soc_write(codec, UDA1341_DATA00, val);//最终调用到本函数内注册的snd_soc_codec_driverd.write函数
+	
+	return 0;
+}
+
+//音量信息获取与调整
+static const struct snd_kcontrol_new uda1341_vol_control = 
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, 
+    .name = "Master Playback Volume",  //名字代表功能 不能随意取
+	.info = uda1341_info_vol, //获取音量数据信息
+	.get  = uda1341_get_vol, //获取当前音量
+	.put  = uda1341_put_vol, //设置音量
+};
 
 static int uda1341_soc_probe ( struct snd_soc_codec* codec )
 {
+    int ret;
+
 	uda1341_init_regs(codec);
-	return 0;
+    
+	ret = snd_soc_add_codec_controls(codec, &uda1341_vol_control, 1); //注册音量控制
+	
+	return ret;
 }
 
 /*
@@ -286,7 +341,7 @@ static int uda1341_write_reg ( struct snd_soc_codec* codec, unsigned int reg,
 }
 
 
-//codec相关函数
+//芯片操作相关函数
 static struct snd_soc_codec_driver soc_codec_dev_uda1341 = {
 	.probe = uda1341_soc_probe,
 	/* UDA1341的寄存器不支持读操作
@@ -337,7 +392,8 @@ static const struct snd_soc_dai_ops uda1341_dai_ops = {
 	.hw_params	= uda1341_hw_params, //参数设置
 };
 
-//指明uda1341 iis的通道数 采样率 格式
+//芯片DAI相关参数
+//uda1341 iis的通道数 采样率 格式
 static struct snd_soc_dai_driver uda1341_dai = {
 	.name = "uda1341-iis",
 	/* playback capabilities */
@@ -357,7 +413,7 @@ static struct snd_soc_dai_driver uda1341_dai = {
 		.formats = UDA134X_FORMATS,
 	},
 	/* pcm operations */
-	.ops = &uda1341_dai_ops,
+	.ops = &uda1341_dai_ops, //芯片dai相关操作函数
 };
 
 
