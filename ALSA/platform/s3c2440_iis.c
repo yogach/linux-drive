@@ -23,6 +23,17 @@ static volatile unsigned int *gpecon;
 static volatile	struct s3c2440_iis_regs *iis_regs;
 
 #define ABS(a, b) ((a>b)?(a-b):(b-a))
+
+//iis 启动函数
+static void s3c2440_iis_start(void)
+{
+    iis_regs->iiscon |= (1);
+}
+static void s3c2440_iis_stop(void)
+{
+    iis_regs->iiscon &= ~(1);
+}
+
 static int s3c2440_i2s_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params,
 	struct snd_soc_dai *dai)
@@ -89,9 +100,37 @@ static int s3c2440_i2s_hw_params(struct snd_pcm_substream *substream,
     return 0;
 }
 
+static int s3c2440_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
+				   struct snd_soc_dai *dai)
+{
+	int ret = 0;
+
+    //在触发传输时，同时开启iis通道
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		s3c2440_iis_start();
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		s3c2440_iis_stop();
+	    break;
+	default:
+		
+		ret = -EINVAL;
+		break;
+	}
+
+exit_err:
+	return ret;
+}
+
 //s3c2440 iis启动 关闭 参数设置
 static const struct snd_soc_dai_ops s3c2440_i2s_dai_ops = {
     .hw_params	= s3c2440_i2s_hw_params, //硬件参数设置
+    .trigger = s3c2440_i2s_trigger,
 };
 
 #define S3C24XX_I2S_RATES \
@@ -149,6 +188,13 @@ struct platform_driver s3c2440_iis_drv = {
 
 static int s3c2440_iis_init(void)
 {
+    struct clk *clk;
+
+	//使能iis时钟
+	clk = clk_get(NULL, "iis");
+	clk_enable(clk);
+	clk_put(clk);
+
    gpecon = ioremap(0x56000040, 4);
    iis_regs = ioremap(0x55000000, sizeof(struct s3c2440_iis_regs));
 
@@ -160,9 +206,17 @@ static int s3c2440_iis_init(void)
 
 static void s3c2440_iis_exit(void)
 {   
+    struct clk *clk;
+
+	
 	platform_device_unregister(&s3c2440_iis_dev);
 	platform_driver_unregister(&s3c2440_iis_drv);
-   
+
+    //取消iis时钟使能
+	clk = clk_get(NULL, "iis");
+	clk_disable(clk);
+	clk_put(clk);
+	
 	iounmap(gpecon);
 	iounmap(iis_regs);	
 }

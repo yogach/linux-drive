@@ -83,7 +83,8 @@ static void load_dma_period ( void )
 	dma_regs->disrcc     = ( 0<<1 ) | ( 0<<0 ); /* 源位于AHB总线, 源地址递增 */
 	dma_regs->didst      = 0x55000010;        /* 目的的物理地址 */
 	dma_regs->didstc     = ( 0<<2 ) | ( 1<<1 ) | ( 1<<0 ); /* 目的位于APB总线, 目的地址不变 */
-	dma_regs->dcon       = ( 1<<31 ) | ( 0<<30 ) | ( 1<<29 ) | ( 0<<28 ) | ( 0<<27 ) | ( 0<<24 ) | ( 1<<23 ) | ( 1<<20 ) | ( playback_dma_info.period_size/2 ); /* 使能中断,单个传输,硬件触发 */
+    /* bit22: 1-noreload */
+	dma_regs->dcon       = (1<<31)|(0<<30)|(1<<29)|(0<<28)|(0<<27)|(0<<24)|(1<<23)|(1<<22)|(1<<20)|(playback_dma_info.period_size/2);  /* 使能中断,单个传输,硬件触发 */
 }
 
 static void s3c2440_dma_start ( void )
@@ -230,21 +231,32 @@ static int s3c2440_dma_close ( struct snd_pcm_substream* substream )
 static struct snd_pcm_ops s3c2440_dma_ops = {
 	.open		= s3c2440_dma_open,
 	.close      = s3c2440_dma_close,
+	.ioctl		= snd_pcm_lib_ioctl,
 	.hw_params	= s3c2440_dma_hw_params,
 	.prepare    = s3c2440_dma_prepare, //准备传输
 	.trigger	= s3c2440_dma_trigger, //启动传输
 	.pointer	= s3c2440_dma_pointer, //用于dma传输的值指向下一个period
 };
 
+static u64 dma_mask = DMA_BIT_MASK(32);
 static int s3c2440_dma_new ( struct snd_soc_pcm_runtime* rtd )
 {
+	struct snd_card *card = rtd->card->snd_card;
 
 	struct snd_pcm* pcm = rtd->pcm;
+	struct snd_pcm_substream *substream = pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream;
+	struct snd_dma_buffer *buf = &substream->dma_buffer;
 
 	int ret = 0;
 
-	/* 1. 分配DMA BUFFER */
+    //添加dma_mask
+    if (!card->dev->dma_mask)
+		card->dev->dma_mask = &dma_mask;
+	if (!card->dev->coherent_dma_mask)
+		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 
+
+	/* 1. 分配DMA BUFFER */
 	//分配playback dma  buff
 	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
 	    playback_dma_info.virt_addr = (unsigned int)dma_alloc_writecombine(pcm->card->dev, s3c2440_dma_hardware.buffer_bytes_max,
@@ -254,6 +266,13 @@ static int s3c2440_dma_new ( struct snd_soc_pcm_runtime* rtd )
 			return -ENOMEM;
 		}
 		playback_dma_info.buf_max_size = s3c2440_dma_hardware.buffer_bytes_max;
+
+		//成功分配dma buf之后 需要将参数设置到声卡核心层中
+    	buf->dev.type = SNDRV_DMA_TYPE_DEV;
+    	buf->dev.dev = pcm->card->dev;
+    	buf->private_data = NULL;
+        buf->area = playback_dma_info.virt_addr;
+        buf->bytes = playback_dma_info.buf_max_size;
 	}
 
 	//分配capture buff
