@@ -305,9 +305,8 @@ static void uda1341_init_regs ( struct snd_soc_codec* codec )
 	/* GPB 4: L3CLOCK */
 	/* GPB 3: L3DATA */
 	/* GPB 2: L3MODE */
-
-	set_mod ( 1 );
-	set_clk ( 1 );
+    *gpbcon &= ~((3<<4) | (3<<6) | (3<<8)); //设置mode线为输出模式
+    *gpbcon |= ((1<<4) | (1<<6) | (1<<8));
 
     uda1341_write_reg(UDA1341_STATUS0, 0x40 | STAT0_SC_384FS | STAT0_DC_FILTER); // reset uda1341
     uda1341_write_reg(UDA1341_STATUS1, STAT1_ADC_ON | STAT1_DAC_ON); //启动 adc dac
