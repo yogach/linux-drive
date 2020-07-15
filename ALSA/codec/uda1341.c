@@ -1,3 +1,11 @@
+#include <linux/module.h>
+#include <linux/delay.h>
+#include <linux/slab.h>
+#include <sound/pcm.h>
+#include <sound/pcm_params.h>
+#include <sound/soc.h>
+#include <sound/initval.h>
+#include <asm/io.h>
 /* 参考 sound\soc\codecs\uda134x.c
  */
 
@@ -5,6 +13,9 @@
  * 2. 构造一个snd_soc_codec_driver
  * 3. 注册它们
  */
+#define UDA134X_RATES SNDRV_PCM_RATE_8000_48000
+#define UDA134X_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | \
+		SNDRV_PCM_FMTBIT_S18_3LE | SNDRV_PCM_FMTBIT_S20_3LE)
 
 /* status control */
 #define STAT0 (0x00)
@@ -84,9 +95,9 @@
 
 
 #define UDA1341_L3ADDR	5
-#define UDA1341_DATA0_ADDR	((UDA134X_L3ADDR << 2) | 0)
-#define UDA1341_DATA1_ADDR	((UDA134X_L3ADDR << 2) | 1)
-#define UDA1341_STATUS_ADDR	((UDA134X_L3ADDR << 2) | 2)
+#define UDA1341_DATA0_ADDR	((UDA1341_L3ADDR << 2) | 0)
+#define UDA1341_DATA1_ADDR	((UDA1341_L3ADDR << 2) | 1)
+#define UDA1341_STATUS_ADDR	((UDA1341_L3ADDR << 2) | 2)
 
 
 /* UDA1341 registers */
@@ -111,8 +122,7 @@
 
 
 /* 所有寄存器的默认值 */
-static const char uda1341_reg[UDA1341_REG_NUM] =
-{
+static const char uda1341_reg[UDA1341_REG_NUM] = {
 	/* data0 */
 	0x00, 0x40, 0x80,
 
@@ -127,16 +137,14 @@ static const char uda1341_reg[UDA1341_REG_NUM] =
 
 };
 
-static const char uda1341_reg_addr[UDA1341_REG_NUM] =
-{
+static const char uda1341_reg_addr[UDA1341_REG_NUM] = {
 	UDA1341_DATA0_ADDR, UDA1341_DATA0_ADDR, UDA1341_DATA0_ADDR,
 	0, 1, 2, 4, 5, 6, //代表选择哪个额外的EA地址
 	UDA1341_DATA1_ADDR,
 	UDA1341_STATUS_ADDR, UDA1341_STATUS_ADDR
 };
 
-static const char uda1341_data_bit[UDA1341_REG_NUM] =
-{
+static const char uda1341_data_bit[UDA1341_REG_NUM] = {
 	0, ( 1<<6 ), ( 1<<7 ),
 	0, 0, 0, 0, 0, 0,
 	0,
@@ -164,9 +172,7 @@ static inline unsigned int uda1341_read_reg_cache ( struct snd_soc_codec* codec,
 	u8* cache = codec->reg_cache;
 
 	if ( reg >= UDA1341_REG_NUM )
-	{
 		return -1;
-	}
 	return cache[reg];
 }
 
@@ -212,8 +218,7 @@ static void sendbyte ( unsigned int byte )
 {
 	int i;
 
-	for ( i = 0; i < 8; i++ )
-	{
+	for (i = 0; i < 8; i++) {
 		set_clk ( 0 );
 		udelay ( 1 );
 		set_dat ( byte & 1 );
@@ -257,9 +262,7 @@ static int uda1341_write_reg ( struct snd_soc_codec* codec, unsigned int reg,
 
 	/* 先保存 */
 	if ( reg >= UDA1341_REG_NUM )
-	{
 		return -1;
-	}
 	cache[reg] = value;
 
 	/* 再写入硬件 */
@@ -284,8 +287,7 @@ static int uda1341_write_reg ( struct snd_soc_codec* codec, unsigned int reg,
 
 
 //codec相关函数
-static struct snd_soc_codec_driver soc_codec_dev_uda1341 =
-{
+static struct snd_soc_codec_driver soc_codec_dev_uda1341 = {
 	.probe = uda1341_soc_probe,
 	/* UDA1341的寄存器不支持读操作
 	* 要知道某个寄存器的当前值,
@@ -308,12 +310,12 @@ static void uda1341_init_regs ( struct snd_soc_codec* codec )
     *gpbcon &= ~((3<<4) | (3<<6) | (3<<8)); //设置mode线为输出模式
     *gpbcon |= ((1<<4) | (1<<6) | (1<<8));
 
-    uda1341_write_reg(UDA1341_STATUS0, 0x40 | STAT0_SC_384FS | STAT0_DC_FILTER); // reset uda1341
-    uda1341_write_reg(UDA1341_STATUS1, STAT1_ADC_ON | STAT1_DAC_ON); //启动 adc dac
+    uda1341_write_reg(codec, UDA1341_STATUS0, 0x40 | STAT0_SC_384FS | STAT0_DC_FILTER); // reset uda1341
+    uda1341_write_reg(codec, UDA1341_STATUS1, STAT1_ADC_ON | STAT1_DAC_ON);
 
-    uda1341_write_reg(UDA1341_DATA00, DATA0_VOLUME(0x0)); // maximum volume
-    uda1341_write_reg(UDA1341_DATA01, DATA1_BASS(0)| DATA1_TREBLE(0));
-    uda1341_write_reg(UDA1341_DATA10, 0);  // not mute
+    uda1341_write_reg(codec, UDA1341_DATA00, DATA0_VOLUME(0x0)); // maximum volume
+    uda1341_write_reg(codec, UDA1341_DATA01, DATA1_BASS(0)| DATA1_TREBLE(0));
+    uda1341_write_reg(codec, UDA1341_DATA10, 0);  // not mute
 }
 
 
@@ -331,14 +333,12 @@ static int uda1341_hw_params ( struct snd_pcm_substream* substream,
 
 
 //iis 开启、关闭、参数设置
-static const struct snd_soc_dai_ops uda1341_dai_ops =
-{
+static const struct snd_soc_dai_ops uda1341_dai_ops = {
 	.hw_params	= uda1341_hw_params, //参数设置
 };
 
 //指明uda1341 iis的通道数 采样率 格式
-static struct snd_soc_dai_driver uda1341_dai =
-{
+static struct snd_soc_dai_driver uda1341_dai = {
 	.name = "uda1341-iis",
 	/* playback capabilities */
 	.playback = {
@@ -377,20 +377,19 @@ static int uda1341_probe ( struct platform_device* pdev )
 
 static int uda1341_remove ( struct platform_device* pdev )
 {
-	return snd_soc_unregister_codec ( &pdev->dev );
+    snd_soc_unregister_codec(&pdev->dev);
+    return 0;
 }
 
 
-static struct platform_device uda1341_dev =
-{
+static struct platform_device uda1341_dev = {
 	.name         = "uda1341-codec",
 	.id       = -1,
 	.dev = {
 		.release = uda1341_dev_release,
 	},
 };
-struct platform_driver uda1341_drv =
-{
+struct platform_driver uda1341_drv = {
 	.probe		= uda1341_probe,
 	.remove		= uda1341_remove,
 	.driver		= {
@@ -423,3 +422,4 @@ static void uda1341_exit ( void )
 module_init ( uda1341_init );
 module_exit ( uda1341_exit );
 
+MODULE_LICENSE("GPL");

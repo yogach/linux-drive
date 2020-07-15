@@ -1,8 +1,16 @@
+#include <linux/delay.h>
+#include <linux/clk.h>
+#include <linux/io.h>
+#include <linux/gpio.h>
+#include <linux/module.h>
+#include <sound/soc.h>
+#include <sound/pcm_params.h>
+#include <mach/regs-gpio.h>
+#include <mach/dma.h>
 /* 参考sound\soc\samsung\s3c24xx-i2s.c
  */
 
-struct s3c2440_iis_regs
-{
+struct s3c2440_iis_regs {
     unsigned int iiscon ; 
     unsigned int iismod ; 
     unsigned int iispsr ; 
@@ -14,6 +22,7 @@ struct s3c2440_iis_regs
 static volatile unsigned int *gpecon;
 static volatile	struct s3c2440_iis_regs *iis_regs;
 
+#define ABS(a, b) ((a>b)?(a-b):(b-a))
 static int s3c2440_i2s_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params,
 	struct snd_soc_dai *dai)
@@ -85,6 +94,10 @@ static const struct snd_soc_dai_ops s3c2440_i2s_dai_ops = {
     .hw_params	= s3c2440_i2s_hw_params, //硬件参数设置
 };
 
+#define S3C24XX_I2S_RATES \
+	(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_16000 | \
+	SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | \
+	SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000)
 
 static struct snd_soc_dai_driver s3c2440_i2s_dai = {
     //指明了s3c2440 iis接口的相关属性 采样率 格式等 
@@ -108,7 +121,8 @@ static int s3c2440_iis_probe(struct platform_device *pdev)
 }
 static int s3c2440_iis_remove(struct platform_device *pdev)
 {
-	return snd_soc_unregister_dai(&pdev->dev); //4.9.88内核中此函数只能在soc-core.c中使用
+	snd_soc_unregister_dai(&pdev->dev);
+    return 0;
 }
 
 static void s3c2440_iis_release(struct device * dev)
@@ -157,4 +171,5 @@ static void s3c2440_iis_exit(void)
 module_init(s3c2440_iis_init);
 module_exit(s3c2440_iis_exit);
 
+MODULE_LICENSE("GPL");
 

@@ -1,3 +1,11 @@
+#include <linux/slab.h>
+#include <linux/dma-mapping.h>
+#include <linux/module.h>
+#include <sound/soc.h>
+#include <sound/pcm_params.h>
+#include <asm/dma.h>
+#include <mach/hardware.h>
+#include <mach/dma.h>
 /* 参考 sound\soc\samsung\dma.c
  */
 
@@ -13,8 +21,7 @@
 #define DMA3_BASE_ADDR  0x4B0000C0
 
 
-struct s3c_dma_regs
-{
+struct s3c_dma_regs {
 	unsigned long disrc;
 	unsigned long disrcc;
 	unsigned long didst;
@@ -28,8 +35,7 @@ struct s3c_dma_regs
 
 static volatile struct s3c_dma_regs* dma_regs;
 
-struct s3c2440_dma_info
-{
+struct s3c2440_dma_info {
 	unsigned int buf_max_size; //驱动程序分配的最大的buf大小
 	unsigned int buffer_size;  //应用程序使用的buf大小
 	unsigned int period_size;  //一个period的大小
@@ -43,8 +49,7 @@ static struct s3c2440_dma_info playback_dma_info;
 
 
 //运行时的dma各种属性
-static const struct snd_pcm_hardware s3c2440_dma_hardware =
-{
+static const struct snd_pcm_hardware s3c2440_dma_hardware = {
 
 	.info			= SNDRV_PCM_INFO_INTERLEAVED |    //相关信息
 	SNDRV_PCM_INFO_BLOCK_TRANSFER |
@@ -100,9 +105,7 @@ static irqreturn_t s3c2440_dma2_irq ( int irq, void* devid )
 	/* 更新状态信息 */
 	playback_dma_info.dma_ofs += playback_dma_info.period_size; //偏移指向下一段数据的起始位置
 	if ( playback_dma_info.dma_ofs >= playback_dma_info.buffer_size ) //大于使用的buff size 则回到起始位置
-	{
 		playback_dma_info.dma_ofs = 0;
-	}
 
 	/* 更新hw_ptr等信息,
 	 * 函数内部会判断:如果buffer里没有数据了,会调用trigger来停止DMA
@@ -184,8 +187,7 @@ static int s3c2440_dma_trigger ( struct snd_pcm_substream* substream, int cmd )
 	/* 根据cmd启动或停止DMA传输 */
 
 
-	switch ( cmd )
-	{
+	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
 		case SNDRV_PCM_TRIGGER_RESUME:
 		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
@@ -225,8 +227,7 @@ static int s3c2440_dma_close ( struct snd_pcm_substream* substream )
 
 
 //数据、参数传输相关函数
-static struct snd_pcm_ops s3c2440_dma_ops =
-{
+static struct snd_pcm_ops s3c2440_dma_ops = {
 	.open		= s3c2440_dma_open,
 	.close      = s3c2440_dma_close,
 	.hw_params	= s3c2440_dma_hw_params,
@@ -238,7 +239,6 @@ static struct snd_pcm_ops s3c2440_dma_ops =
 static int s3c2440_dma_new ( struct snd_soc_pcm_runtime* rtd )
 {
 
-	struct snd_card* card = rtd->card->snd_card;
 	struct snd_pcm* pcm = rtd->pcm;
 
 	int ret = 0;
@@ -246,10 +246,8 @@ static int s3c2440_dma_new ( struct snd_soc_pcm_runtime* rtd )
 	/* 1. 分配DMA BUFFER */
 
 	//分配playback dma  buff
-	if ( pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream )
-	{
-		dma_alloc_writecombine();
-		playback_dma_info.virt_addr = dma_alloc_writecombine ( pcm->card->dev, s3c2440_dma_hardware.buffer_bytes_max,
+	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
+	    playback_dma_info.virt_addr = (unsigned int)dma_alloc_writecombine(pcm->card->dev, s3c2440_dma_hardware.buffer_bytes_max,
 		                                                       &playback_dma_info.phy_addr, GFP_KERNEL );
 		if ( !playback_dma_info.virt_addr )
 		{
@@ -266,16 +264,13 @@ static int s3c2440_dma_new ( struct snd_soc_pcm_runtime* rtd )
 
 static void s3c2440_dma_free ( struct snd_pcm* pcm )
 {
-	struct snd_pcm_substream* substream;
-	struct snd_dma_buffer* buf;
 
 	dma_free_writecombine ( pcm->card->dev, playback_dma_info.buf_max_size,
-	                        playback_dma_info.virt_addr, playback_dma_info.phy_addr );
+			      (void *)playback_dma_info.virt_addr, playback_dma_info.phy_addr);
 }
 
 
-static struct snd_soc_platform_driver s3c2440_dma_platform =
-{
+static struct snd_soc_platform_driver s3c2440_dma_platform = {
 	.ops		= &s3c2440_dma_ops,
 
 	.pcm_new	= s3c2440_dma_new, //创建声卡  时调用此函数 在此函数内申请dma buff
@@ -290,23 +285,22 @@ static int s3c2440_dma_probe ( struct platform_device* pdev )
 }
 static int s3c2440_dma_remove ( struct platform_device* pdev )
 {
-	return snd_soc_unregister_platform ( &pdev->dev );
+	snd_soc_unregister_platform(&pdev->dev);
+    return 0;
 }
 
 static void s3c2440_dma_release ( struct device* dev )
 {
 }
 
-static struct platform_device s3c2440_dma_dev =
-{
+static struct platform_device s3c2440_dma_dev = {
 	.name         = "s3c2440-dma",
 	.id       = -1,
 	.dev = {
 		.release = s3c2440_dma_release,
 	},
 };
-struct platform_driver s3c2440_dma_drv =
-{
+struct platform_driver s3c2440_dma_drv = {
 	.probe		= s3c2440_dma_probe,
 	.remove		= s3c2440_dma_remove,
 	.driver		= {
@@ -333,3 +327,4 @@ static void s3c2440_dma_exit ( void )
 module_init ( s3c2440_dma_init );
 module_exit ( s3c2440_dma_exit );
 
+MODULE_LICENSE("GPL");

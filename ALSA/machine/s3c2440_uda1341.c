@@ -18,15 +18,13 @@
  */
 
 //相关操作函数
-static struct snd_soc_ops s3c2440_uda1341_ops =
-{
+static struct snd_soc_ops s3c2440_uda1341_ops = {
 	//.hw_params = s3c24xx_uda134x_hw_params,
 };
 
 
 //指明需要使用的各部分驱动的名字
-static struct snd_soc_dai_link s3c2440_uda1341_dai_link =
-{
+static struct snd_soc_dai_link s3c2440_uda1341_dai_link = {
 	.name = "100ask_UDA1341",
 	.stream_name = "100ask_UDA1341",
 	.codec_name = "uda1341-codec",
@@ -37,8 +35,7 @@ static struct snd_soc_dai_link s3c2440_uda1341_dai_link =
 
 };
 
-static struct snd_soc_card myalsa_card =
-{
+static struct snd_soc_card myalsa_card = {
 	.name = "S3C2440_UDA1341",
 	.owner = THIS_MODULE,
 	.dai_link = &s3c2440_uda1341_dai_link,
@@ -50,8 +47,7 @@ static void asoc_release ( struct device* dev )
 }
 
 
-static struct platform_device asoc_dev =
-{
+static struct platform_device asoc_dev = {
 	.name         = "soc-audio",
 	.id       = -1,
 	.dev = {
@@ -74,3 +70,4 @@ static void s3c2440_uda1341_exit ( void )
 
 module_init ( s3c2440_uda1341_init );
 module_exit ( s3c2440_uda1341_exit );
+MODULE_LICENSE("GPL");
