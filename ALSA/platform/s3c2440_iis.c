@@ -115,10 +115,8 @@ static int s3c2440_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-		s3c2440_iis_stop();
-	    break;
 	default:
-		
+        s3c2440_iis_stop();
 		ret = -EINVAL;
 		break;
 	}
@@ -189,14 +187,13 @@ struct platform_driver s3c2440_iis_drv = {
 static int s3c2440_iis_init(void)
 {
     struct clk *clk;
-
+    gpecon   = ioremap(0x56000040, 4);
+    iis_regs = ioremap(0x55000000, sizeof(struct s3c2440_iis_regs));
 	//使能iis时钟
 	clk = clk_get(NULL, "iis");
 	clk_enable(clk);
 	clk_put(clk);
 
-   gpecon = ioremap(0x56000040, 4);
-   iis_regs = ioremap(0x55000000, sizeof(struct s3c2440_iis_regs));
 
    platform_device_register(&s3c2440_iis_dev);
    platform_driver_register(&s3c2440_iis_drv);
@@ -211,14 +208,12 @@ static void s3c2440_iis_exit(void)
 	
 	platform_device_unregister(&s3c2440_iis_dev);
 	platform_driver_unregister(&s3c2440_iis_drv);
-
-    //取消iis时钟使能
+    iounmap(gpecon);
+    iounmap(iis_regs);
 	clk = clk_get(NULL, "iis");
 	clk_disable(clk);
 	clk_put(clk);
 	
-	iounmap(gpecon);
-	iounmap(iis_regs);	
 }
 
 
